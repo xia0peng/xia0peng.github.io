@@ -1,3 +1,15 @@
+
+
+<!--PC版-->
+<div id="SOHUCS" ></div>
+<script charset="utf-8" type="text/javascript" src="https://changyan.sohu.com/upload/changyan.js" ></script>
+<script type="text/javascript">
+window.changyan.api.config({
+appid: 'cyto6PdCF',
+conf: 'prod_f127ba3357e51d446688f21df77b1b40'
+});
+</script>
+
 (function($) {
 	$.getUrlParam = function(name) {
 		var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)");
