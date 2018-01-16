@@ -1,0 +1,75 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description"><title>AFNetworking框架分析 | 怪兽</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/7.0.0/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/1.0.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/1.0.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.7.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/3.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><!-- 加载gitment的css和js文件 -->
+<link rel="stylesheet" href="/css/default.css">
+<script src="/js/gitment.browser.js"></script><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">AFNetworking框架分析</h1><a id="logo" href="/.">怪兽</a><p class="description">技术沉淀，追求创新。</p></div><div id="nav-menu"><a class="current" href="/."><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about"><i class="fa fa-user"> 关于</i></a></div></div><div class="pure-g" id="layout"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">AFNetworking框架分析</h1><div class="post-meta">Mar 16, 2017<span> | </span><span class="category"><a href="/categories/principle/">原理</a></span><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> 阅读</span></span></div><div class="post-content"><p>想必AFNetworking网络请求框架，每个iOS开发攻城狮都晓得，也会使用，但是其内部构造及原理对小白来说还是有些生疏，这篇文章我们就来探索AFNetworking的神秘。</p>
+<p>说明：本篇文章并非原创，文章底部有原文链接，之所以整理，是因为这是学习的过程，也是整理零散知识的过程，每一遍的来过都会有意外收获。</p>
+<h2 id="AFN的结构"><a href="#AFN的结构" class="headerlink" title="AFN的结构"></a>AFN的结构</h2><p>首先我们来看看AFN的结构：</p>
+<p><img src="/img/AFN结构图.png" alt=""></p>
+<p>从上图可以看出，除了头文件和Support Files，AFNetworking是由NSURLSession、Reachability、Security、Serialization、UIKit五部分组成。</p>
+<ol>
+<li><strong>NSURLSession</strong>：网络通信模块（核心模块）对应AFNetworking中的 AFURLSessionManager和对HTTP协议进行特化处理的AFHTTPSessionManager，AFHTTPSessionManager是继承于AFURLSessionmanager的。</li>
+<li><strong>Reachability</strong>：网络状态监听模块</li>
+<li><strong>Security</strong>：网络通讯安全策略模块 </li>
+<li><strong>Seriaalization</strong>：网络通信信息序列化、反序列化模块</li>
+<li><strong>UIKit</strong>：对于IOSUIKit的扩展库</li>
+</ol>
+<h2 id="核心模块NSURLSession"><a href="#核心模块NSURLSession" class="headerlink" title="核心模块NSURLSession"></a>核心模块NSURLSession</h2><h3 id="1、NSURLSession由三个基本模块构成："><a href="#1、NSURLSession由三个基本模块构成：" class="headerlink" title="1、NSURLSession由三个基本模块构成："></a>1、NSURLSession由三个基本模块构成：</h3><ul>
+<li>NSURLSession</li>
+<li>NSURLSessionConfiguation</li>
+<li>NSURLSessionTask</li>
+</ul>
+<p>NSURLSession相对于平时通信中的会话，但本身却不会进行网络数据传输，它会通过多个NSURLSessionTask去执行每次的网络请求</p>
+<p>NSURLSession的行为取决于三个方面。包括</p>
+<ul>
+<li>NSURLSession的类型</li>
+<li>NSURLSessionTask的类型</li>
+<li>在创建task时APP是否处于前端</li>
+</ul>
+<h3 id="2、NSURLSession有三种类型"><a href="#2、NSURLSession有三种类型" class="headerlink" title="2、NSURLSession有三种类型"></a>2、NSURLSession有三种类型</h3><ul>
+<li><p>defaultSession（默认会话模式）：将cache和creditials储存于本地</p>
+</li>
+<li><p>Ephemeral Session（瞬时会话模式）：对数据更加保密安全，并不会向本地储存任何数据，将cache和creditials储存在内存中，并和Session绑定，当Session销毁时，对应的数据也会被销毁。</p>
+</li>
+<li><p>backgroundSession（后台会话模式）：可以时APP处于后台时继续数据传输，其行为与defaultSession类似，但是所有的数据传输均由一个非本APP的进程来管理。也有一些功能上的限制。</p>
+</li>
+</ul>
+<p><strong>在创建Session对象时通过NSURLSessionConfigration来配置，可设置Session的delegate，Session一但配置完成，就不能修改，除非创建一个新的Session对象。</strong></p>
+<h3 id="3、NSURLSessionTask包括三种Task类型"><a href="#3、NSURLSessionTask包括三种Task类型" class="headerlink" title="3、NSURLSessionTask包括三种Task类型"></a>3、NSURLSessionTask包括三种Task类型</h3><ul>
+<li>NSURLSessionDataTask</li>
+<li>NSURLSessionDownLoadTask</li>
+<li>NSURLSessionUploadTask</li>
+</ul>
+<p>所有的Task状态都是暂停的，需要用[Task resume]启动Task</p>
+<h3 id="4、NSURLSession有两种获取数据的方式"><a href="#4、NSURLSession有两种获取数据的方式" class="headerlink" title="4、NSURLSession有两种获取数据的方式"></a>4、NSURLSession有两种获取数据的方式</h3><ul>
+<li>初始化session时指定delegate，在代理方法中返回数据，需要实现NSURLSession的两个代理方法</li>
+<li>初始化Session时未指定delegate的，通过block回调返回数据。</li>
+</ul>
+<h3 id="5、NSURLSession对象的销毁，有两种销毁模式"><a href="#5、NSURLSession对象的销毁，有两种销毁模式" class="headerlink" title="5、NSURLSession对象的销毁，有两种销毁模式"></a>5、NSURLSession对象的销毁，有两种销毁模式</h3><ul>
+<li><ul>
+<li>(void)invalidateAndCancel 取消该Session中的所有Task，销毁所有delegate、block和Session自身，调用后Session不能再复用</li>
+</ul>
+</li>
+<li><ul>
+<li>(void)finishTasksAndInvalidate 会立即返回，但不会取消已启动的task，而是当这些task完成时，调用delegate</li>
+</ul>
+</li>
+</ul>
+<p>这里有个地方需要注意，即：NSURLSession对象对其delegate都是强引用的，只有当Session对象invalidate， 才会释放delegate，否则会出现memory leak。</p>
+<p><strong>使用Session加速网络访问速度，使用同一个Session中的task访问数据，不用每次都实现三次握手，复用之前服务器和客户端之间的网络链接，从而加快访问速度。</strong></p>
+<h2 id="网络请求的过程"><a href="#网络请求的过程" class="headerlink" title="网络请求的过程"></a>网络请求的过程</h2><p>创建NSURLSessionConfig对象，用创建的config对象配置初始化NSURLSession，创建NSURLSessionTask对象并resume执行，用delegate或者block回调返回数据。</p>
+<p>AFURLSessionManager封装了上述网络交互功能<br>AFURLSessionManager请求过程：</p>
+<ol>
+<li>初始化AFURLSessionManager</li>
+<li>获取AFURLSessionManager的Task对象</li>
+<li>启动Task</li>
+</ol>
+<p>AFURLSessionManager会为每一个Task创建一个AFURLSessionmanagerTaskDelegate对象，manager会让其处理各个Task的具体事务，从而实现了manager对多个Task的管理</p>
+<p>初始化好manager后，获取一个网络请求的Task，生成一个Task对象，并创建了一个AFURLSessionmanagerTaskDelegate并将其关联，设置Task的上传和下载delegate，通过KVO监听download进度和upload进度</p>
+<h3 id="NSURLSessionDelegate的响应"><a href="#NSURLSessionDelegate的响应" class="headerlink" title="NSURLSessionDelegate的响应"></a>NSURLSessionDelegate的响应</h3><p>因为AFURLSessionmanager所管理的AFURLSession的delegate指向其自身，因此所有的NSURLSessiondelegate的回调地址都是AFURLSessionmanager，而AFURLSessionmanager又会根据是否需要具体处理会将AF delegate所响应的delegate，传递到对应的AF delegate去。</p>
+<h3 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h3><p><a href="https://www.jianshu.com/p/02b25f6d1e1f" target="_blank" rel="noopener">AFNetworking实现原理理解</a></p>
+</div><iframe src="/donate/?AliPayQR=/img/AliPayQR.png&amp;WeChatQR=/img/WeChatQR.png&amp;GitHub=null&amp;BTCQR=null&amp;BTCKEY=null&amp;PayPal=null" style="overflow-x:hidden; overflow-y:hidden; border:0xp none #fff; min-height:240px; width:100%;" frameborder="0" scrolling="no"></iframe><div class="tags"><a href="/tag/Objective-C/">Objective-C</a></div><div class="post-nav"><a class="pre" href="/2017/04/20/RunLoop/">RunLoop[转]</a><a class="next" href="/2017/02/21/Runtime之动态添加方法/">Runtime之动态添加方法</a></div></div></div></div><div class="pure-u-1-4 hidden_mid_and_down"><div id="sidebar"><div class="widget"><div class="search-form"><input id="local-search-input" placeholder="Search" type="text" name="q" results="0"/><div id="local-search-result"></div></div></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/iOS/">iOS</a><span class="category-list-count">4</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/principle/">原理</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/performance/">性能</a><span class="category-list-count">2</span></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tag/Objective-C/" style="font-size: 15px;">Objective-C</a> <a href="/tag/Runtime/" style="font-size: 15px;">Runtime</a> <a href="/tag/Swift/" style="font-size: 15px;">Swift</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最近文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2018/01/08/APP的优化/">APP的优化</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/12/26/UITableView的优化/">UITableView的优化</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/12/14/NStimer准确吗/">NStimer准确吗</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/04/20/RunLoop/">RunLoop[转]</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/03/16/AFNetworking框架分析/">AFNetworking框架分析</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/02/21/Runtime之动态添加方法/">Runtime之动态添加方法</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/02/20/Runtime之动态添加属性/">Runtime之动态添加属性</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/02/14/Runtime/">Runtime和消息转发</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/01/05/LLDB/">LLDB</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/12/18/CAlayer/">CAlayer</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://www.baidu.com/" title="百度" target="_blank">百度</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">Copyright © 2018 <a href="/." rel="nofollow">怪兽.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho. <span>您是访问本站的第<span id="busuanzi_value_site_uv"></span>位小伙伴</span> <script type="text/javascript">var cnzz_protocol = (("https:" == document.location.protocol) ? " https://" : " http://");document.write(unescape("%3Cspan id='cnzz_stat_icon_1271673961'%3E%3C/span%3E%3Cscript src='" + cnzz_protocol + "s13.cnzz.com/z_stat.php%3Fid%3D1271673961%26show%3Dpic1' type='text/javascript'%3E%3C/script%3E"));</script></a></div></div></div><a class="show" id="rocket" href="#top"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/3.2.5/jquery.fancybox.min.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/fancybox/3.2.5/jquery.fancybox.min.css"><script type="text/javascript" src="/js/search.js?v=0.0.0"></script><script>var search_path = 'search.xml';
+if (search_path.length == 0) {
+   search_path = 'search.xml';
+}
+var path = '/' + search_path;
+searchFunc(path, 'local-search-input', 'local-search-result');
+</script><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

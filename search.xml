@@ -3,6 +3,378 @@
   
     
     <entry>
+      <title><![CDATA[APP的优化]]></title>
+      <url>/2018/01/08/APP%E7%9A%84%E4%BC%98%E5%8C%96/</url>
+      <content type="html"><![CDATA[<p>一款APP开发出来以后，并不能单单关注的它的功能，重中之重是其性能，只有性能优越，用户体验才能提高，这样才能留住用户，让用户觉得我们是在用心最开发✧(≖ ◡ ≖✿)。</p>
+<h1 id="1、启动优化"><a href="#1、启动优化" class="headerlink" title="1、启动优化"></a>1、启动优化</h1><p><a href="https://mp.weixin.qq.com/s/Kf3EbDIUuf0aWVT-UCEmbA" target="_blank" rel="noopener">iOS App 启动性能优化</a>这篇文章很详细的介绍了启动的性能优化，其中还介绍了一些与启动相关的知识，值得一看。</p>
+<p>在这里只对启动优化做一个概括，大概分为以下几种：</p>
+<ol>
+<li>移除不需要用到的动态库</li>
+<li>移除不需要用到的类</li>
+<li>合并功能类似的类和扩展（Category）</li>
+<li>压缩资源图片</li>
+<li>优化applicationWillFinishLaunching</li>
+<li>优化rootViewController加载</li>
+</ol>
+<p>总结：</p>
+<ul>
+<li><p>利用DYLD_PRINT_STATISTICS分析main()函数之前的耗时</p>
+<ol>
+<li>重新梳理架构，减少动态库、ObjC类的数目，减少Category的数目</li>
+<li>定期扫描不再使用的动态库、类、函数，例如每两个迭代一次</li>
+<li>用dispatchonce()代替所有的<strong>attribute</strong>((constructor))函数、C++静态对象初始化、ObjC的+load </li>
+<li>在设计师可接受的范围内压缩图片的大小，会有意外收获</li>
+</ol>
+</li>
+</ul>
+<ul>
+<li><p>利用锚点分析applicationWillFinishLaunching的耗时</p>
+<ol>
+<li>将不需要马上在applicationWillFinishLaunching执行的代码延后执行</li>
+<li>rootViewController的加载，适当将某一级的childViewController或subviews延后加载</li>
+<li>如果你的App可能会被后台拉起并冷启动，可考虑不加载rootViewController</li>
+</ol>
+</li>
+</ul>
+<ul>
+<li><p>不应放过的一些小细节</p>
+<ol>
+<li>异步操作并不影响指标，但有可能影响交互体验，例如大量网络请求导致数据拥堵</li>
+<li>有时候一些交互上的优化比技术手段效果更明显，视觉上的快决不是冰冷的数据可以解释的，好好和你们的设计师谈谈动画</li>
+</ol>
+</li>
+</ul>
+<p>计算代码执行耗时（用Instruments也可以）：</p>
+<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">- (<span class="built_in">BOOL</span>)application:(<span class="built_in">UIApplication</span> *)application didFinishLaunchingWithOptions:(<span class="built_in">NSDictionary</span> *)launchOptions &#123;</span><br><span class="line">    </span><br><span class="line">    <span class="built_in">CFAbsoluteTime</span> start = <span class="built_in">CFAbsoluteTimeGetCurrent</span>();</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// do something</span></span><br><span class="line">    </span><br><span class="line">    <span class="built_in">CFAbsoluteTime</span> end = <span class="built_in">CFAbsoluteTimeGetCurrent</span>();</span><br><span class="line">    </span><br><span class="line">    <span class="built_in">NSLog</span>(<span class="string">@"%fms"</span>,(end -start)*<span class="number">1000</span>);</span><br><span class="line">     </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="2、UITableView的优化"><a href="#2、UITableView的优化" class="headerlink" title="2、UITableView的优化"></a>2、UITableView的优化</h1><p>UITableView是APP最重要的控件之一，几乎所有APP都会用到UITableView，因此它的优化也为APP优化重中之重，是优化APP必不可少的以部门。前面写过一篇专门讲解<a href="待续">UITableView优化</a>的文章，在这里就不具体描述。</p>
+<h1 id="3、未完待续。。。"><a href="#3、未完待续。。。" class="headerlink" title="3、未完待续。。。"></a>3、未完待续。。。</h1>]]></content>
+      
+        <categories>
+            
+            <category> 性能 </category>
+            
+        </categories>
+        
+        
+        <tags>
+            
+            <tag> Objective-C </tag>
+            
+        </tags>
+        
+    </entry>
+    
+    <entry>
+      <title><![CDATA[UITableView的优化]]></title>
+      <url>/2017/12/26/UITableView%E7%9A%84%E4%BC%98%E5%8C%96/</url>
+      <content type="html"><![CDATA[<p>UITableView是iOS中最常用的控件之一，毫不夸张的说基本每个app的都会用到UITableView，简单的使用可能不会有什么问题，但是利用UITableView进行复杂的布局（比如朋友圈的实现），就可能会出现一些性能问题，例如：滑动时卡顿，cell加载太慢等。</p>
+<p>那么优化就势在必得。。。</p>
+<h2 id="在优化之前"><a href="#在优化之前" class="headerlink" title="在优化之前"></a>在优化之前</h2><h3 id="UITableView的cell重用机制"><a href="#UITableView的cell重用机制" class="headerlink" title="UITableView的cell重用机制"></a>UITableView的cell重用机制</h3><p>UITableView最核心的思想就是UITableViewCell的重用机制。重用机制实现了数据和显示的分离,并不为每个数据创建一个UITableViewCell。</p>
+<p>简单的理解就是：UITableView只会创建一屏幕（或一屏幕多一点）的UITableViewCell，其他都是从中取出来重用的。每当Cell滑出屏幕时，就会放入到一个集合（或数组）中（这里就相当于一个重用池），当要显示某一位置的Cell时，会先去集合（或数组）中取，如果有，就直接拿来显示；如果没有，才会创建。这样做的好处可想而知，极大的减少了内存的开销。</p>
+<p>这种机制下系统默认有一个可变数组<code>NSMutableArray *visiableCells</code>，用来保存当前显示的cell。一个可变字典<code>NSMutableDictnery *reusableTableCells</code>，用来保存可重复利用的cell。（之所以用字典是因为可重用的cell有不止一种样式,我们需要根据它的reuseIdentifier,也就是所谓的重用标示符来查找是否有可重用的该样式的cell）。</p>
+<h3 id="UITableView的代理方法"><a href="#UITableView的代理方法" class="headerlink" title="UITableView的代理方法"></a>UITableView的代理方法</h3><p> 必须实现的两个数据源回调方法:</p>
+<figure class="highlight less"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/** 返回每个分区的行数 */</span></span><br><span class="line"><span class="selector-tag">-</span> (NSInteger)<span class="selector-tag">tableView</span><span class="selector-pseudo">:(UITableView</span> *)<span class="selector-tag">tableView</span> <span class="selector-tag">numberOfRowsInSection</span><span class="selector-pseudo">:(NSInteger)section</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/** 返回每一行的cell */</span></span><br><span class="line"><span class="selector-tag">-</span> (UITableViewCell *)<span class="selector-tag">tableView</span><span class="selector-pseudo">:(UITableView</span> *)<span class="selector-tag">tableView</span> <span class="selector-tag">cellForRowAtIndexPath</span><span class="selector-pseudo">:(NSIndexPath</span> *)<span class="selector-tag">indexPath</span>;</span><br></pre></td></tr></table></figure>
+<p>调用最频繁的两个回调方法：</p>
+<figure class="highlight less"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/** 返回cell的高度 */</span></span><br><span class="line"><span class="selector-tag">-</span> (CGFloat)<span class="selector-tag">tableView</span><span class="selector-pseudo">:(UITableView</span> *)<span class="selector-tag">tableView</span> <span class="selector-tag">heightForRowAtIndexPath</span><span class="selector-pseudo">:(NSIndexPath</span> *)<span class="selector-tag">indexPath</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/** 返回每一行的cell */</span></span><br><span class="line"><span class="selector-tag">-</span> (UITableViewCell *)<span class="selector-tag">tableView</span><span class="selector-pseudo">:(UITableView</span> *)<span class="selector-tag">tableView</span> <span class="selector-tag">cellForRowAtIndexPath</span><span class="selector-pseudo">:(NSIndexPath</span> *)<span class="selector-tag">indexPath</span>;</span><br></pre></td></tr></table></figure>
+<p>UITableView是继承自UIScrollView的，需要先确定它的contentSize及每个Cell的位置，然后才会把重用的Cell放置到对应的位置。所以事实上，UITableView的回调顺序是先多次调用tableView:heightForRowAtIndexPath:以确定contentSize及Cell的位置，然后才会调用tableView:cellForRowAtIndexPath:，从而来显示在当前屏幕的Cell。</p>
+<p>因此，优化UITableView的首要任务就是优化上面这两个回调方法。</p>
+<h2 id="优化"><a href="#优化" class="headerlink" title="优化"></a>优化</h2><h3 id="1-Cell重用"><a href="#1-Cell重用" class="headerlink" title="1. Cell重用"></a>1. Cell重用</h3><p><strong>数据源优化方案：</strong>首先创建一个静态变量reuseID（代理方法返回Cell会调用很多次，防止重复创建，static保证只会被创建一次，提高性能），然后，从缓存池中取相应identifier的Cell并更新数据，如果没有，才开始alloc新的Cell，并用identifier标识Cell。每个Cell都会注册一个identifier（重用标识符）放入缓存池，当需要调用的时候就直接从缓存池里找对应的id，当不需要时就放入缓存池等待调用。（移出屏幕的Cell才会放入缓存池中，并不会被release）所以在数据源方法中做出如下优化：</p>
+<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//调用次数太多，static 保证只创建一次reuseID，提高性能</span></span><br><span class="line"><span class="keyword">static</span> <span class="built_in">NSString</span> *reuseID = “reuseCellID”;</span><br></pre></td></tr></table></figure>
+<figure class="highlight excel"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">//缓存池中取已经创建的<span class="built_in">cell</span></span><br><span class="line">UITableViewCell *<span class="built_in">cell</span> = [tableView dequeueReusableCellWithIdentifi<span class="symbol">er:re</span>useID];</span><br></pre></td></tr></table></figure>
+<p><strong>缓存池的实现：</strong>当Cell要alloc时，UITableView会在堆中开辟一段内存以供Cell缓存之用。Cell的重用通过identifier标识不同类型的Cell，由此可以推断出，缓存池外层可能是一个可变字典，通过key来取出内部的Cell，而缓存池为存储不同高度、不同类型（包含图片、Label等）的Cell，可以推断出缓存池的字典内部可能是一个可变数组，用来存放不同类型的Cell，缓存池中只会保存已经被移出屏幕的不同类型的Cell。</p>
+<h3 id="2-提前计算并缓存Cell的高度"><a href="#2-提前计算并缓存Cell的高度" class="headerlink" title="2. 提前计算并缓存Cell的高度"></a>2. 提前计算并缓存Cell的高度</h3><p>调用最频繁的两个方法，上面已经优化了数据源方法，这里就是优化tableView:heightForRowAtIndexPath:方法了。</p>
+<ul>
+<li><p>UITableView在不设UITableViewCell的预估行高的情况下，会优先调用tableView:heightForRowAtIndexPath:方法，获取每个Cell的即将显示的高度，从而确定UITableView的布局，实际就是要获取contentSize（UITableView继承自UIScrollView,只有获取滚动区域，才能实现滚动）,然后才调用tableView:cellForRowAtIndexPath,获取每个Cell，进行赋值。</p>
+</li>
+<li><p>滚动时，每当cell进入凭虚都会计算高度，提前估算高度告诉编译器，编译器知道高度后，紧接着就会创建cell，这时再调用高度的具体计算方法，这样可以方式浪费时间去计算显示以外的cell</p>
+</li>
+</ul>
+<p><strong>方案：</strong>创建一个frame模型，在刚获取到数据的时候，提前计算每个Cell的高度，之后每次返回缓存高度，可以避免在滑动时实时计算高度。</p>
+<p><strong>示例：</strong>如下面这个是我以前开发的朋友圈，先将获取到的数据转化为模型，然后将模型数组转换为frame模型数据，提前计算好所有的frame（包括cell高度和cell所有子控件frame）</p>
+<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> *  根据纳信模型数组 转成 纳信frame模型数据</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> *  @param statuses 纳信模型数组</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line">- (<span class="built_in">NSArray</span> *)statusFramesWithStatuses:(<span class="built_in">NSArray</span> *)statuses</span><br><span class="line">&#123;</span><br><span class="line">    <span class="built_in">NSMutableArray</span> *frames = [<span class="built_in">NSMutableArray</span> array];</span><br><span class="line">    <span class="keyword">for</span> (NXStatusModel *status <span class="keyword">in</span> statuses) &#123;</span><br><span class="line">        NXStatusFrame *frame = [[NXStatusFrame alloc] init];</span><br><span class="line">        <span class="comment">// 传递纳信模型数据，计算所有子控件的frame</span></span><br><span class="line">        frame.isMask = <span class="literal">NO</span>;</span><br><span class="line">        frame.status = status;</span><br><span class="line">        [frames addObject:frame];</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> frames;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="3-避免cell的重新布局"><a href="#3-避免cell的重新布局" class="headerlink" title="3. 避免cell的重新布局"></a>3. 避免cell的重新布局</h3><p>cell的布局填充等操作 比较耗时，一般创建时就布局好，<br>如可以将cell单独放到一个自定义类，初始化时就布局好。</p>
+<ul>
+<li><p>尽可能的将 相同内容的抽取到一种样式Cell中，前面已经提到了Cell的重用机制，这样就能保证UITbaleView要显示多少内容，真正创建出的Cell可能只比屏幕显示的Cell多一点。虽然Cell的’体积’可能会大点，但是因为Cell的数量不会很多，完全可以接受的。</p>
+</li>
+<li><p>只定义一种Cell，那该如何显示不同类型的内容呢？答案就是，把所有不同类型的view都定义好，放在cell里面，通过hidden显示、隐藏，来显示不同类型的内容。毕竟，在用户快速滑动中，只是单纯的显示、隐藏subview比实时创建要快得多。</p>
+</li>
+</ul>
+<h3 id="4-滑动时，按需加载"><a href="#4-滑动时，按需加载" class="headerlink" title="4. 滑动时，按需加载"></a>4. 滑动时，按需加载</h3><p>开发的过程中，自定义Cell的种类千奇百怪，但Cell本来就是用来显示数据的，不说100%带有图片，也差不多，这个时候就要考虑，下滑的过程中可能会有点卡顿，尤其网络不好的时候，异步加载图片是个程序员都会想到，但是如果给每个循环对象都加上异步加载，开启的线程太多，一样会卡顿，我记得好像线程条数一般3-5条，最多也就6条吧。这个时候利用UIScrollViewDelegate两个代理方法就能很好地解决这个问题。</p>
+<figure class="highlight erlang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">- <span class="params">(void)</span>scrollViewDidEndDragging:<span class="params">(UIScrollView *)</span>scrollView willDecelerate:<span class="params">(BOOL)</span>decelerate</span><br><span class="line">- <span class="params">(void)</span>scrollViewDidEndDecelerating:<span class="params">(UIScrollView *)</span>scrollView</span><br></pre></td></tr></table></figure>
+<p>思想就是识别UITableView禁止或者减速滑动结束的时候，进行异步加载图片，快滑动过程中，只加载目标范围内的Cell，这样按需加载，极大的提高流畅度。而SDWebImage可以实现异步加载，与这条性能配合就完美了，尤其是大量图片展示的时候。而且也不用担心图片缓存会造成内存警告的问题。</p>
+<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//获取可见部分的Cell</span></span><br><span class="line"><span class="built_in">NSArray</span> *visiblePaths = [<span class="keyword">self</span>.tableView indexPathsForVisibleRows];</span><br><span class="line">        <span class="keyword">for</span> (<span class="built_in">NSIndexPath</span> *indexPath <span class="keyword">in</span> visiblePaths)</span><br><span class="line">        &#123;</span><br><span class="line">        <span class="comment">//获取的dataSource里面的对象，并且判断加载完成的不需要再次异步加载</span></span><br><span class="line">             &lt;code&gt;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p>记得在记得在“tableView:cellForRowAtIndexPath:”方法中加入判断：</p>
+<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// tableView 停止滑动的时候异步加载图片</span></span><br><span class="line">- (<span class="built_in">UITableViewCell</span> *)tableView:(<span class="built_in">UITableView</span> *)tableView cellForRowAtIndexPath:(<span class="built_in">NSIndexPath</span> *)indexPath</span><br><span class="line"></span><br><span class="line">         <span class="keyword">if</span> (<span class="keyword">self</span>.tableView.dragging == <span class="literal">NO</span> &amp;&amp; <span class="keyword">self</span>.tableView.decelerating == <span class="literal">NO</span>)</span><br><span class="line">            &#123;</span><br><span class="line">               <span class="comment">//开始异步加载图片</span></span><br><span class="line">                &lt;code&gt;</span><br><span class="line">            &#125;</span><br></pre></td></tr></table></figure>
+<h3 id="5-渲染"><a href="#5-渲染" class="headerlink" title="5. 渲染"></a>5. 渲染</h3><p>不要使用ClearColor，无背景色，透明度也不要设置为0，渲染耗时比较长</p>
+<p><strong>1、</strong>减少subviews的个数和层级</p>
+<p> 子控件的层级越深，渲染到屏幕上所需要的计算量就越大；如多用drawRect绘制元素，替代用view显示</p>
+<p><strong>2、</strong>少用subviews的透明图层</p>
+<p> 对于不透明的View，设置opaque为YES，这样在绘制该View时，就不需要考虑被View覆盖的其他内容（尽量设置Cell的view为opaque，避免GPU对Cell下面的内容也进行绘制）</p>
+<p><strong>3、</strong>避免CALayer特效（shadowPath）</p>
+<p>给Cell中View加阴影会引起性能问题，如下面代码会导致滚动时有明显的卡顿：</p>
+<figure class="highlight mipsasm"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">view.layer.<span class="keyword">shadowColor </span>= color.CGColor<span class="comment">;</span></span><br><span class="line">view.layer.<span class="keyword">shadowOffset </span>= offset<span class="comment">;</span></span><br><span class="line">view.layer.<span class="keyword">shadowOpacity </span>= <span class="number">1</span><span class="comment">;</span></span><br><span class="line">view.layer.<span class="keyword">shadowRadius </span>= radius<span class="comment">;</span></span><br></pre></td></tr></table></figure>
+<h3 id="6-使用局部更新"><a href="#6-使用局部更新" class="headerlink" title="6. 使用局部更新"></a>6. 使用局部更新</h3><p>如果只是更新某组的话，使用reloadSection进行局部更新</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p><a href="http://www.cocoachina.com/ios/20150602/11968.html" target="_blank" rel="noopener">这里</a>有位大佬，可以去看看哦</p>
+<p> UITableView的优化主要从三个方面入手:</p>
+<ul>
+<li>提前计算并缓存好高度（布局），因为heightForRowAtIndexPath:是调用最频繁的方法；</li>
+<li>滑动时按需加载，防止卡顿，这个我也认为是很有必要做的性能优化，配合SDWebImage</li>
+<li>异步绘制，遇到复杂界面，遇到性能瓶颈时，可能就是突破口（如题，遇到复杂的界面，可以从这入手）</li>
+</ul>
+<p>除了上面最主要的三个方面外，还有很多熟知的优化点：</p>
+<ul>
+<li>正确使用reuseIdentifier来重用Cells</li>
+<li>尽量使所有的view opaque，包括Cell自身</li>
+<li>尽量少用或不用透明图层</li>
+<li>如果Cell内现实的内容来自web，使用异步加载，缓存请求结果</li>
+<li>减少subviews的数量</li>
+<li>在heightForRowAtIndexPath:中尽量不使用cellForRowAtIndexPath:，如果你需要用到它，只用一次然后缓存结果</li>
+<li>尽量少用addView给Cell动态添加View，可以初始化时就添加，然后通过hide来控制是否显示</li>
+</ul>
+<h3 id="文章链接"><a href="#文章链接" class="headerlink" title="文章链接"></a>文章链接</h3><p><a href="http://blog.sunnyxx.com/2015/05/17/cell-height-calculation/" target="_blank" rel="noopener">优化UITableViewCell高度计算的那些事</a></p>
+<p><a href="http://www.cocoachina.com/ios/20150602/11968.html" target="_blank" rel="noopener">UITableView优化技巧</a></p>
+<p><a href="http://blog.csdn.net/u011452278/article/details/60961350" target="_blank" rel="noopener">UITableView性能优化</a></p>
+]]></content>
+      
+        <categories>
+            
+            <category> 性能 </category>
+            
+        </categories>
+        
+        
+        <tags>
+            
+            <tag> Objective-C </tag>
+            
+        </tags>
+        
+    </entry>
+    
+    <entry>
+      <title><![CDATA[NStimer准确吗]]></title>
+      <url>/2017/12/14/NStimer%E5%87%86%E7%A1%AE%E5%90%97/</url>
+      <content type="html"><![CDATA[<h3 id="基本使用"><a href="#基本使用" class="headerlink" title="基本使用"></a>基本使用</h3><figure class="highlight groovy"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"> <span class="comment">/*   </span></span><br><span class="line"><span class="comment">  * TimeInterval:设定执行时间    </span></span><br><span class="line"><span class="comment">  * target:目标    </span></span><br><span class="line"><span class="comment">  * @selector:方法(也就是目标(target)的行为(selector))  </span></span><br><span class="line"><span class="comment">  * userInfo:用于向selector方法中传参数,  一般是self</span></span><br><span class="line"><span class="comment">  * repeats:是否重复</span></span><br><span class="line"><span class="comment">  */</span></span><br><span class="line">  </span><br><span class="line">NSTimer * timer = [NSTimer <span class="string">scheduledTimerWithTimeInterval:</span><span class="number">.3</span> <span class="string">target:</span>self <span class="string">selector:</span><span class="meta">@selector</span>(<span class="string">changeColor:</span>) <span class="string">userInfo:</span>view <span class="string">repeats:</span>YES];    </span><br><span class="line">[timer fire];<span class="comment">//开始执行</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//计时器执行的方法,sender 就是对应的计时器(那个计时器调的我)</span></span><br><span class="line">- (<span class="keyword">void</span>)<span class="string">changeColor:</span>(NSTimer *)sender</span><br><span class="line">&#123;    </span><br><span class="line"><span class="comment">//sender计时器对象,通过.userinfo属性就能拿到当初传来的参数(id类型),</span></span><br><span class="line">对于此题上面穿的是一个view对象,所以直接用UIview类型接收   </span><br><span class="line"> UIView * vie = sender.userInfo;   </span><br><span class="line"> <span class="comment">//修改传入视图的背景色   </span></span><br><span class="line"> vie.backgroundColor = [UIColor <span class="string">colorWithRed:</span>arc4random() % <span class="number">256</span> <span class="regexp">/ 255.0 green:arc4random() % 256 /</span> <span class="number">255.0</span> <span class="string">blue:</span>arc4random() % <span class="number">256</span> / <span class="number">255.0</span> <span class="string">alpha:</span><span class="number">1.0</span>];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>NSTimer 不是一个基于真实时间的机制。NSTimer被激发需要满足三个条件：</p>
+<ol>
+<li>NSTimer被添加到特定mode的runloop中</li>
+<li>该mode型的runloop正在运行</li>
+<li>到达激发时间。</li>
+</ol>
+<p>所以当上面1、2条出现问题时NSTimer就会受到影响，所以NSTimer是不准确的。</p>
+<h3 id="不准的原因"><a href="#不准的原因" class="headerlink" title="不准的原因"></a>不准的原因</h3><ol>
+<li>NSTimer加在main runloop中，模式是NSDefaultRunLoopMode，main负责所有主线程事件，例如UI界面的操作，复杂的运算，这样在同一个runloop中timer就会产生阻塞。</li>
+<li>模式的改变。主线程的 RunLoop 里有两个预置的 Mode：kCFRunLoopDefaultMode 和 UITrackingRunLoopMode。</li>
+</ol>
+<ul>
+<li>这两个 Mode 都已经被标记为”Common”属性。DefaultMode 是 App 平时所处的状态，TrackingRunLoopMode 是追踪 ScrollView 滑动时的状态。当你创建一个 Timer 并加到 DefaultMode 时，Timer 会得到重复回调，但此时滑动一个TableView时，RunLoop 会将 mode 切换为 TrackingRunLoopMode，这时 Timer 就不会被回调，并且也不会影响到滑动操作。</li>
+</ul>
+<h3 id="解决NStimer不准的问题"><a href="#解决NStimer不准的问题" class="headerlink" title="解决NStimer不准的问题"></a>解决NStimer不准的问题</h3><p>1、在子线程中进行NSTimer的操作，再在主线程中修改UI界面显示操作结果</p>
+<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">- (<span class="keyword">void</span>)timerMethod2 &#123;</span><br><span class="line">    </span><br><span class="line">    <span class="built_in">NSThread</span> *thread = [[<span class="built_in">NSThread</span> alloc] initWithTarget:<span class="keyword">self</span> selector:<span class="keyword">@selector</span>(newThread) object:<span class="literal">nil</span>];</span><br><span class="line">    </span><br><span class="line">    [thread start];</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">- (<span class="keyword">void</span>)newThread&#123;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">@autoreleasepool</span></span><br><span class="line">    </span><br><span class="line">    &#123;</span><br><span class="line">        </span><br><span class="line">        [<span class="built_in">NSTimer</span> scheduledTimerWithTimeInterval:<span class="number">1.0</span> target:<span class="keyword">self</span> selector:<span class="keyword">@selector</span>(showTime) userInfo:<span class="literal">nil</span> repeats:<span class="literal">YES</span>];</span><br><span class="line">        </span><br><span class="line">        [[<span class="built_in">NSRunLoop</span> currentRunLoop] run];</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>2、仍然在主线程中进行NSTimer操作，但是将NSTimer实例加到main runloop的特定mode（模式）中，避免被复杂运算操作或者UI界面刷新所干扰</p>
+<figure class="highlight css"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="selector-attr">[[NSRunLoop currentRunLoop]</span> <span class="selector-tag">addTimer</span><span class="selector-pseudo">:self.timer</span> <span class="selector-tag">forMode</span><span class="selector-pseudo">:NSRunLoopCommonModes</span>];</span><br></pre></td></tr></table></figure>
+<p>[NSRunLoop currentRunLoop] 获取的就是 main runloop，使用NSRunLoopCommonModes模式，将NSTimer加入其中。</p>
+<p><strong>注意：</strong></p>
+<ul>
+<li><p>一开始的时候系统就为我们将主线程的main runloop隐式的启动了。</p>
+</li>
+<li><p>在创建线程的时候，可以主动获取当前线程的runloop。每个子线程对应一个runloop</p>
+</li>
+</ul>
+]]></content>
+      
+        <categories>
+            
+            <category> 原理 </category>
+            
+        </categories>
+        
+        
+        <tags>
+            
+            <tag> Objective-C </tag>
+            
+        </tags>
+        
+    </entry>
+    
+    <entry>
+      <title><![CDATA[RunLoop[转]]]></title>
+      <url>/2017/04/20/RunLoop/</url>
+      <content type="html"><![CDATA[<p>RunLoop 是 iOS 开发中非常基础的一个概念，在开发中你自己可能很少用到，但它在你的项目中却无处不在，了解RunLoop对iOS编程有百利而无一害。</p>
+<h2 id="RunLoop-的概念"><a href="#RunLoop-的概念" class="headerlink" title="RunLoop 的概念"></a>RunLoop 的概念</h2><p>一般来讲，一个线程一次只能执行一个任务，执行完成后线程就会退出。如果我们需要一个机制，让线程能随时处理事件但并不退出，通常的代码逻辑是这样的：</p>
+<figure class="highlight actionscript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">loop</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    initialize();</span><br><span class="line">    <span class="keyword">do</span> &#123;</span><br><span class="line">        <span class="keyword">var</span> message = get_next_message();</span><br><span class="line">        process_message(message);</span><br><span class="line">    &#125; <span class="keyword">while</span> (message != quit);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>所以，RunLoop 实际上就是一个对象，这个对象管理了其需要处理的事件和消息，并提供了一个入口函数来执行上面 Event Loop 的逻辑。线程执行了这个函数后，就会一直处于这个函数内部 “接受消息-&gt;等待-&gt;处理” 的循环中，直到这个循环结束（比如传入 quit 的消息），函数返回。</p>
+<h2 id="RunLoop-与线程的关系"><a href="#RunLoop-与线程的关系" class="headerlink" title="RunLoop 与线程的关系"></a>RunLoop 与线程的关系</h2><p>苹果不允许直接创建 RunLoop，它只提供了两个自动获取的函数：CFRunLoopGetMain() 和 CFRunLoopGetCurrent()。这两个函数内部的逻辑大概是下面这样:</p>
+<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/// 全局的Dictionary，key 是 pthread_t， value 是 CFRunLoopRef</span></span><br><span class="line"><span class="keyword">static</span> <span class="built_in">CFMutableDictionaryRef</span> loopsDic;</span><br><span class="line"><span class="comment">/// 访问 loopsDic 时的锁</span></span><br><span class="line"><span class="keyword">static</span> <span class="built_in">CFSpinLock_t</span> loopsLock;</span><br><span class="line">  </span><br><span class="line"><span class="comment">/// 获取一个 pthread 对应的 RunLoop。</span></span><br><span class="line"><span class="built_in">CFRunLoopRef</span> _CFRunLoopGet(pthread_t thread) &#123;</span><br><span class="line">    OSSpinLockLock(&amp;loopsLock);</span><br><span class="line">     </span><br><span class="line">    <span class="keyword">if</span> (!loopsDic) &#123;</span><br><span class="line">        <span class="comment">// 第一次进入时，初始化全局Dic，并先为主线程创建一个 RunLoop。</span></span><br><span class="line">        loopsDic = <span class="built_in">CFDictionaryCreateMutable</span>();</span><br><span class="line">        <span class="built_in">CFRunLoopRef</span> mainLoop = _CFRunLoopCreate();</span><br><span class="line">        <span class="built_in">CFDictionarySetValue</span>(loopsDic, pthread_main_thread_np(), mainLoop);</span><br><span class="line">    &#125;</span><br><span class="line">     </span><br><span class="line">    <span class="comment">/// 直接从 Dictionary 里获取。</span></span><br><span class="line">    <span class="built_in">CFRunLoopRef</span> loop = <span class="built_in">CFDictionaryGetValue</span>(loopsDic, thread));</span><br><span class="line">     </span><br><span class="line">    <span class="keyword">if</span> (!loop) &#123;</span><br><span class="line">        <span class="comment">/// 取不到时，创建一个</span></span><br><span class="line">        loop = _CFRunLoopCreate();</span><br><span class="line">        <span class="built_in">CFDictionarySetValue</span>(loopsDic, thread, loop);</span><br><span class="line">        <span class="comment">/// 注册一个回调，当线程销毁时，顺便也销毁其对应的 RunLoop。</span></span><br><span class="line">        _CFSetTSD(..., thread, loop, __CFFinalizeRunLoop);</span><br><span class="line">    &#125;</span><br><span class="line">     </span><br><span class="line">    OSSpinLockUnLock(&amp;loopsLock);</span><br><span class="line">    <span class="keyword">return</span> loop;</span><br><span class="line">&#125;</span><br><span class="line">  </span><br><span class="line"><span class="built_in">CFRunLoopRef</span> <span class="built_in">CFRunLoopGetMain</span>() &#123;</span><br><span class="line">    <span class="keyword">return</span> _CFRunLoopGet(pthread_main_thread_np());</span><br><span class="line">&#125;</span><br><span class="line">  </span><br><span class="line"><span class="built_in">CFRunLoopRef</span> <span class="built_in">CFRunLoopGetCurrent</span>() &#123;</span><br><span class="line">    <span class="keyword">return</span> _CFRunLoopGet(pthread_self());</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>线程和 RunLoop 之间是一一对应的，其关系是保存在一个全局的 Dictionary 里。线程刚创建时并没有 RunLoop，如果你不主动获取，那它一直都不会有。RunLoop 的创建是发生在第一次获取时，RunLoop 的销毁是发生在线程结束时。你只能在一个线程的内部获取其 RunLoop（主线程除外）。</p>
+<h2 id="RunLoop-对外的接口"><a href="#RunLoop-对外的接口" class="headerlink" title="RunLoop 对外的接口"></a>RunLoop 对外的接口</h2><p>在 CoreFoundation 里面关于 RunLoop 有5个类:</p>
+<ul>
+<li>CFRunLoopRef</li>
+<li>CFRunLoopModeRef</li>
+<li>CFRunLoopSourceRef</li>
+<li>CFRunLoopTimerRef</li>
+<li>CFRunLoopObserverRef</li>
+</ul>
+<p>其中 CFRunLoopModeRef 类并没有对外暴露，只是通过 CFRunLoopRef 的接口进行了封装。他们的关系如下:</p>
+<p><img src="http://cc.cocimg.com/api/uploads/20150528/1432798883604537.png" alt=""></p>
+<p>一个 RunLoop 包含若干个 Mode，每个 Mode 又包含若干个 Source/Timer/Observer。每次调用 RunLoop 的主函数时，只能指定其中一个 Mode，这个Mode被称作 CurrentMode。如果需要切换 Mode，只能退出 Loop，再重新指定一个 Mode 进入。这样做主要是为了分隔开不同组的 Source/Timer/Observer，让其互不影响。</p>
+<p><strong>CFRunLoopSourceRef</strong> 是事件产生的地方。Source有两个版本：Source0 和 Source1。</p>
+<ul>
+<li>Source0 只包含了一个回调（函数指针），它并不能主动触发事件。使用时，你需要先调用 CFRunLoopSourceSignal(source)，将这个 Source 标记为待处理，然后手动调用 CFRunLoopWakeUp(runloop) 来唤醒 RunLoop，让其处理这个事件。</li>
+<li>Source1 包含了一个 mach_port 和一个回调（函数指针），被用于通过内核和其他线程相互发送消息。这种 Source 能主动唤醒 RunLoop 的线程，其原理在下面会讲到。</li>
+</ul>
+<p><strong>CFRunLoopTimerRef</strong> 是基于时间的触发器，它和 NSTimer 是toll-free bridged 的，可以混用。其包含一个时间长度和一个回调（函数指针）。当其加入到 RunLoop 时，RunLoop会注册对应的时间点，当时间点到时，RunLoop会被唤醒以执行那个回调。</p>
+<p><strong>CFRunLoopObserverRef</strong> 是观察者，每个 Observer 都包含了一个回调（函数指针），当 RunLoop 的状态发生变化时，观察者就能通过回调接受到这个变化。可以观测的时间点有以下几个：</p>
+<figure class="highlight lsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">typedef CF_OPTIONS(CFOptionFlags, CFRunLoopActivity) &#123;</span><br><span class="line">    kCFRunLoopEntry         = (<span class="number">1</span>UL &lt;&lt; <span class="number">0</span>), <span class="comment">// 即将进入Loop</span></span><br><span class="line">    kCFRunLoopBeforeTimers  = (<span class="number">1</span>UL &lt;&lt; <span class="number">1</span>), <span class="comment">// 即将处理 Timer</span></span><br><span class="line">    kCFRunLoopBeforeSources = (<span class="number">1</span>UL &lt;&lt; <span class="number">2</span>), <span class="comment">// 即将处理 Source</span></span><br><span class="line">    kCFRunLoopBeforeWaiting = (<span class="number">1</span>UL &lt;&lt; <span class="number">5</span>), <span class="comment">// 即将进入休眠</span></span><br><span class="line">    kCFRunLoopAfterWaiting  = (<span class="number">1</span>UL &lt;&lt; <span class="number">6</span>), <span class="comment">// 刚从休眠中唤醒</span></span><br><span class="line">    kCFRunLoopExit          = (<span class="number">1</span>UL &lt;&lt; <span class="number">7</span>), <span class="comment">// 即将退出Loop</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>上面的 Source/Timer/Observer 被统称为 mode item，一个 item 可以被同时加入多个 mode。但一个 item 被重复加入同一个 mode 时是不会有效果的。如果一个 mode 中一个 item 都没有，则 RunLoop 会直接退出，不进入循环。</p>
+<h2 id="RunLoop-的-Mode"><a href="#RunLoop-的-Mode" class="headerlink" title="RunLoop 的 Mode"></a>RunLoop 的 Mode</h2><p>CFRunLoopMode 和 CFRunLoop 的结构大致如下：</p>
+<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">struct</span> __CFRunLoopMode &#123;</span><br><span class="line">    <span class="built_in">CFStringRef</span> _name;            <span class="comment">// Mode Name, 例如 @"kCFRunLoopDefaultMode"</span></span><br><span class="line">    <span class="built_in">CFMutableSetRef</span> _sources0;    <span class="comment">// Set</span></span><br><span class="line">    <span class="built_in">CFMutableSetRef</span> _sources1;    <span class="comment">// Set</span></span><br><span class="line">    <span class="built_in">CFMutableArrayRef</span> _observers; <span class="comment">// Array</span></span><br><span class="line">    <span class="built_in">CFMutableArrayRef</span> _timers;    <span class="comment">// Array</span></span><br><span class="line">    ...</span><br><span class="line">&#125;;</span><br><span class="line">  </span><br><span class="line"><span class="keyword">struct</span> __CFRunLoop &#123;</span><br><span class="line">    <span class="built_in">CFMutableSetRef</span> _commonModes;     <span class="comment">// Set</span></span><br><span class="line">    <span class="built_in">CFMutableSetRef</span> _commonModeItems; <span class="comment">// Set</span></span><br><span class="line">    <span class="built_in">CFRunLoopModeRef</span> _currentMode;    <span class="comment">// Current Runloop Mode</span></span><br><span class="line">    <span class="built_in">CFMutableSetRef</span> _modes;           <span class="comment">// Set</span></span><br><span class="line">    ...</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>这里有个概念叫 “CommonModes”：一个 Mode 可以将自己标记为”Common”属性（通过将其 ModeName 添加到 RunLoop 的 “commonModes” 中）。每当 RunLoop 的内容发生变化时，RunLoop 都会自动将 _commonModeItems 里的 Source/Observer/Timer 同步到具有 “Common” 标记的所有Mode里。</p>
+<p>应用场景举例：主线程的 RunLoop 里有两个预置的 Mode：kCFRunLoopDefaultMode 和 UITrackingRunLoopMode。这两个 Mode 都已经被标记为”Common”属性。DefaultMode 是 App 平时所处的状态，TrackingRunLoopMode 是追踪 ScrollView 滑动时的状态。当你创建一个 Timer 并加到 DefaultMode 时，Timer 会得到重复回调，但此时滑动一个TableView时，RunLoop 会将 mode 切换为 TrackingRunLoopMode，这时 Timer 就不会被回调，并且也不会影响到滑动操作。</p>
+<p>有时你需要一个 Timer，在两个 Mode 中都能得到回调，一种办法就是将这个 Timer 分别加入这两个 Mode。还有一种方式，就是将 Timer 加入到顶层的 RunLoop 的 “commonModeItems” 中。”commonModeItems” 被 RunLoop 自动更新到所有具有”Common”属性的 Mode 里去。</p>
+<h2 id="RunLoop-的内部逻辑"><a href="#RunLoop-的内部逻辑" class="headerlink" title="RunLoop 的内部逻辑"></a>RunLoop 的内部逻辑</h2><p>RunLoop 内部的逻辑大致如下:</p>
+<p><img src="http://cc.cocimg.com/api/uploads/20150528/1432798974517485.png" alt=""></p>
+<p>可以看到，实际上 RunLoop 就是这样一个函数，其内部是一个 do-while 循环。当你调用 CFRunLoopRun() 时，线程就会一直停留在这个循环里；直到超时或被手动停止，该函数才会返回。</p>
+<h2 id="苹果用-RunLoop-实现的功能"><a href="#苹果用-RunLoop-实现的功能" class="headerlink" title="苹果用 RunLoop 实现的功能"></a>苹果用 RunLoop 实现的功能</h2><p>首先我们可以看一下 App 启动后 RunLoop 的状态，可以看到，系统默认注册了5个Mode:</p>
+<ol>
+<li>kCFRunLoopDefaultMode: App的默认 Mode，通常主线程是在这个 Mode 下运行的。</li>
+<li>UITrackingRunLoopMode: 界面跟踪 Mode，用于 ScrollView 追踪触摸滑动，保证界面滑动时不受其他 Mode 影响。</li>
+<li>UIInitializationRunLoopMode: 在刚启动 App 时第进入的第一个 Mode，启动完成后就不再使用。</li>
+<li>GSEventReceiveRunLoopMode: 接受系统事件的内部 Mode，通常用不到。</li>
+<li>kCFRunLoopCommonModes: 这是一个占位的 Mode，没有实际作用。</li>
+</ol>
+<p>当 RunLoop 进行回调时，一般都是通过一个很长的函数调用出去 (call out), 当你在你的代码中下断点调试时，通常能在调用栈上看到这些函数。下面是这几个函数的整理版本，如果你在调用栈中看到这些长函数名，在这里查找一下就能定位到具体的调用地点了：</p>
+<figure class="highlight clojure"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    /// <span class="number">1</span>. 通知Observers，即将进入RunLoop</span><br><span class="line">    /// 此处有Observer会创建AutoreleasePool: _objc_autoreleasePoolPush()<span class="comment">;</span></span><br><span class="line">    __CFRUNLOOP_IS_CALLING_OUT_TO_AN_OBSERVER_CALLBACK_FUNCTION__(<span class="name">kCFRunLoopEntry</span>)<span class="comment">;</span></span><br><span class="line">    do &#123;</span><br><span class="line">  </span><br><span class="line">        /// <span class="number">2</span>. 通知 Observers: 即将触发 Timer 回调。</span><br><span class="line">        __CFRUNLOOP_IS_CALLING_OUT_TO_AN_OBSERVER_CALLBACK_FUNCTION__(<span class="name">kCFRunLoopBeforeTimers</span>)<span class="comment">;</span></span><br><span class="line">        /// <span class="number">3</span>. 通知 Observers: 即将触发 Source (非基于port的,Source0) 回调。</span><br><span class="line">        __CFRUNLOOP_IS_CALLING_OUT_TO_AN_OBSERVER_CALLBACK_FUNCTION__(<span class="name">kCFRunLoopBeforeSources</span>)<span class="comment">;</span></span><br><span class="line">        __CFRUNLOOP_IS_CALLING_OUT_TO_A_BLOCK__(<span class="name">block</span>)<span class="comment">;</span></span><br><span class="line">  </span><br><span class="line">        /// <span class="number">4</span>. 触发 Source0 (非基于port的) 回调。</span><br><span class="line">        __CFRUNLOOP_IS_CALLING_OUT_TO_A_SOURCE0_PERFORM_FUNCTION__(<span class="name">source0</span>)<span class="comment">;</span></span><br><span class="line">        __CFRUNLOOP_IS_CALLING_OUT_TO_A_BLOCK__(<span class="name">block</span>)<span class="comment">;</span></span><br><span class="line">  </span><br><span class="line">        /// <span class="number">6</span>. 通知Observers，即将进入休眠</span><br><span class="line">        /// 此处有Observer释放并新建AutoreleasePool: _objc_autoreleasePoolPop()<span class="comment">; _objc_autoreleasePoolPush();</span></span><br><span class="line">        __CFRUNLOOP_IS_CALLING_OUT_TO_AN_OBSERVER_CALLBACK_FUNCTION__(<span class="name">kCFRunLoopBeforeWaiting</span>)<span class="comment">;</span></span><br><span class="line">  </span><br><span class="line">        /// <span class="number">7</span>. sleep to wait msg.</span><br><span class="line">        mach_msg() -&gt; mach_msg_trap()<span class="comment">;</span></span><br><span class="line">         </span><br><span class="line">  </span><br><span class="line">        /// <span class="number">8</span>. 通知Observers，线程被唤醒</span><br><span class="line">        __CFRUNLOOP_IS_CALLING_OUT_TO_AN_OBSERVER_CALLBACK_FUNCTION__(<span class="name">kCFRunLoopAfterWaiting</span>)<span class="comment">;</span></span><br><span class="line">  </span><br><span class="line">        /// <span class="number">9</span>. 如果是被Timer唤醒的，回调Timer</span><br><span class="line">        __CFRUNLOOP_IS_CALLING_OUT_TO_A_TIMER_CALLBACK_FUNCTION__(<span class="name">timer</span>)<span class="comment">;</span></span><br><span class="line">  </span><br><span class="line">        /// <span class="number">9</span>. 如果是被dispatch唤醒的，执行所有调用 dispatch_async 等方法放入main queue 的 block</span><br><span class="line">        __CFRUNLOOP_IS_SERVICING_THE_MAIN_DISPATCH_QUEUE__(<span class="name">dispatched_block</span>)<span class="comment">;</span></span><br><span class="line">  </span><br><span class="line">        /// <span class="number">9</span>. 如果如果Runloop是被 Source1 (基于port的) 的事件唤醒了，处理这个事件</span><br><span class="line">        __CFRUNLOOP_IS_CALLING_OUT_TO_A_SOURCE1_PERFORM_FUNCTION__(<span class="name">source1</span>)<span class="comment">;</span></span><br><span class="line">  </span><br><span class="line">  </span><br><span class="line">    &#125; while (<span class="name">...</span>)<span class="comment">;</span></span><br><span class="line">  </span><br><span class="line">    /// <span class="number">10</span>. 通知Observers，即将退出RunLoop</span><br><span class="line">    /// 此处有Observer释放AutoreleasePool: _objc_autoreleasePoolPop()<span class="comment">;</span></span><br><span class="line">    __CFRUNLOOP_IS_CALLING_OUT_TO_AN_OBSERVER_CALLBACK_FUNCTION__(<span class="name">kCFRunLoopExit</span>)<span class="comment">;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="自动释放池-AutoreleasePool"><a href="#自动释放池-AutoreleasePool" class="headerlink" title="自动释放池 AutoreleasePool"></a>自动释放池 AutoreleasePool</h3><p>App启动后，苹果在主线程 RunLoop 里注册了两个 Observer，其回调都是 _wrapRunLoopWithAutoreleasePoolHandler()。</p>
+<ul>
+<li>第一个 Observer 监视的事件是 Entry(即将进入Loop)，其回调内会调用 _objc_autoreleasePoolPush() 创建自动释放池。其 order 是-2147483647，优先级最高，保证创建释放池发生在其他所有回调之前。</li>
+<li>第二个 Observer 监视了两个事件： BeforeWaiting(准备进入休眠) 时调用_objc_autoreleasePoolPop() 和 _objc_autoreleasePoolPush() 释放旧的池并创建新池；Exit(即将退出Loop) 时调用 objc_autoreleasePoolPop() 来释放自动释放池。这个 Observer 的 order 是 2147483647，优先级最低，保证其释放池子发生在其他所有回调之后。</li>
+</ul>
+<p>在主线程执行的代码，通常是写在诸如事件回调、Timer回调内的。这些回调会被 RunLoop 创建好的 AutoreleasePool 环绕着，所以不会出现内存泄漏，开发者也不必显示创建 Pool 了。</p>
+<h3 id="事件响应"><a href="#事件响应" class="headerlink" title="事件响应"></a>事件响应</h3><p>苹果注册了一个 Source1 (基于 mach port 的) 用来接收系统事件，其回调函数为 __IOHIDEventSystemClientQueueCallback()。</p>
+<p>当一个硬件事件(触摸/锁屏/摇晃等)发生后，首先由 IOKit.framework 生成一个 IOHIDEvent 事件并由 SpringBoard 接收。这个过程的详细情况可以参考这里。SpringBoard 只接收按键(锁屏/静音等)，触摸，加速，接近传感器等几种 Event，随后用 mach port 转发给需要的App进程。随后苹果注册的那个 Source1 就会触发回调，并调用 _UIApplicationHandleEventQueue() 进行应用内部的分发。</p>
+<p>_UIApplicationHandleEventQueue() 会把 IOHIDEvent 处理并包装成 UIEvent 进行处理或分发，其中包括识别 UIGesture/处理屏幕旋转/发送给 UIWindow 等。通常事件比如 UIButton 点击、touchesBegin/Move/End/Cancel 事件都是在这个回调中完成的。</p>
+<h3 id="手势识别"><a href="#手势识别" class="headerlink" title="手势识别"></a>手势识别</h3><p>当上面的 _UIApplicationHandleEventQueue() 识别了一个手势时，其首先会调用 Cancel 将当前的 touchesBegin/Move/End 系列回调打断。随后系统将对应的 UIGestureRecognizer 标记为待处理。</p>
+<p>苹果注册了一个 Observer 监测 BeforeWaiting (Loop即将进入休眠) 事件，这个Observer的回调函数是 _UIGestureRecognizerUpdateObserver()，其内部会获取所有刚被标记为待处理的 GestureRecognizer，并执行GestureRecognizer的回调。</p>
+<p>当有 UIGestureRecognizer 的变化(创建/销毁/状态改变)时，这个回调都会进行相应处理。</p>
+<h3 id="界面更新"><a href="#界面更新" class="headerlink" title="界面更新"></a>界面更新</h3><p>当在操作 UI 时，比如改变了 Frame、更新了 UIView/CALayer 的层次时，或者手动调用了 UIView/CALayer 的 setNeedsLayout/setNeedsDisplay方法后，这个 UIView/CALayer 就被标记为待处理，并被提交到一个全局的容器去。</p>
+<p>苹果注册了一个 Observer 监听 BeforeWaiting(即将进入休眠) 和 Exit (即将退出Loop) 事件，回调去执行一个很长的函数：</p>
+<p>_ZN2CA11Transaction17observer_callbackEP19__CFRunLoopObservermPv()。这个函数里会遍历所有待处理的 UIView/CAlayer 以执行实际的绘制和调整，并更新 UI 界面。</p>
+<p>这个函数内部的调用栈大概是这样的：</p>
+<figure class="highlight less"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="selector-tag">_ZN2CA11Transaction17observer_callbackEP19__CFRunLoopObservermPv</span>()</span><br><span class="line">    <span class="selector-tag">QuartzCore</span><span class="selector-pseudo">:CA</span><span class="selector-pseudo">::Transaction</span><span class="selector-pseudo">::observer_callback</span>:</span><br><span class="line">        <span class="selector-tag">CA</span><span class="selector-pseudo">::Transaction</span><span class="selector-pseudo">::commit()</span>;</span><br><span class="line">            <span class="selector-tag">CA</span><span class="selector-pseudo">::Context</span><span class="selector-pseudo">::commit_transaction()</span>;</span><br><span class="line">                <span class="selector-tag">CA</span><span class="selector-pseudo">::Layer</span><span class="selector-pseudo">::layout_and_display_if_needed()</span>;</span><br><span class="line">                    <span class="selector-tag">CA</span><span class="selector-pseudo">::Layer</span><span class="selector-pseudo">::layout_if_needed()</span>;</span><br><span class="line">                        <span class="selector-attr">[CALayer layoutSublayers]</span>;</span><br><span class="line">                            <span class="selector-attr">[UIView layoutSubviews]</span>;</span><br><span class="line">                    <span class="selector-tag">CA</span><span class="selector-pseudo">::Layer</span><span class="selector-pseudo">::display_if_needed()</span>;</span><br><span class="line">                        <span class="selector-attr">[CALayer display]</span>;</span><br><span class="line">                            <span class="selector-attr">[UIView drawRect]</span>;</span><br></pre></td></tr></table></figure>
+<h3 id="定时器"><a href="#定时器" class="headerlink" title="定时器"></a>定时器</h3><p>NSTimer 其实就是 CFRunLoopTimerRef，他们之间是 toll-free bridged 的。一个 NSTimer 注册到 RunLoop 后，RunLoop 会为其重复的时间点注册好事件。例如 10:00, 10:10, 10:20 这几个时间点。RunLoop为了节省资源，并不会在非常准确的时间点回调这个Timer。Timer 有个属性叫做 Tolerance (宽容度)，标示了当时间点到后，容许有多少最大误差。</p>
+<p>如果某个时间点被错过了，例如执行了一个很长的任务，则那个时间点的回调也会跳过去，不会延后执行。就比如等公交，如果 10:10 时我忙着玩手机错过了那个点的公交，那我只能等 10:20 这一趟了。</p>
+<p>CADisplayLink 是一个和屏幕刷新率一致的定时器（但实际实现原理更复杂，和 NSTimer 并不一样，其内部实际是操作了一个 Source）。如果在两次屏幕刷新之间执行了一个长任务，那其中就会有一帧被跳过去（和 NSTimer 相似），造成界面卡顿的感觉。在快速滑动TableView时，即使一帧的卡顿也会让用户有所察觉。Facebook 开源的 AsyncDisplayLink 就是为了解决界面卡顿的问题，其内部也用到了 RunLoop，这个稍后我会再单独写一页博客来分析。</p>
+<h3 id="PerformSelecter"><a href="#PerformSelecter" class="headerlink" title="PerformSelecter"></a>PerformSelecter</h3><p>当调用 NSObject 的 performSelecter:afterDelay: 后，实际上其内部会创建一个 Timer 并添加到当前线程的 RunLoop 中。所以如果当前线程没有 RunLoop，则这个方法会失效。</p>
+<p>当调用 performSelector:onThread: 时，实际上其会创建一个 Timer 加到对应的线程去，同样的，如果对应线程没有 RunLoop 该方法也会失效。</p>
+<h3 id="关于GCD"><a href="#关于GCD" class="headerlink" title="关于GCD"></a>关于GCD</h3><p>实际上 RunLoop 底层也会用到 GCD 的东西，比如 RunLoop 是用 dispatch_source_t 实现的 Timer。但同时 GCD 提供的某些接口也用到了 RunLoop， 例如 dispatch_async()。</p>
+<p>当调用 dispatch_async(dispatch_get_main_queue(), block) 时，libDispatch 会向主线程的 RunLoop 发送消息，RunLoop会被唤醒，并从消息中取得这个 block，并在回调 <strong><strong>CFRUNLOOP_IS_SERVICING_THE_MAIN_DISPATCH_QUEUE</strong>()</strong> 里执行这个 block。但这个逻辑仅限于 dispatch 到主线程，dispatch 到其他线程仍然是由 libDispatch 处理的。</p>
+<h2 id="整理文章"><a href="#整理文章" class="headerlink" title="整理文章"></a>整理文章</h2><p><a href="http://www.cocoachina.com/ios/20150601/11970.html" target="_blank" rel="noopener">深入理解RunLoop</a></p>
+]]></content>
+      
+        <categories>
+            
+            <category> 原理 </category>
+            
+        </categories>
+        
+        
+        <tags>
+            
+            <tag> Objective-C </tag>
+            
+        </tags>
+        
+    </entry>
+    
+    <entry>
+      <title><![CDATA[AFNetworking框架分析]]></title>
+      <url>/2017/03/16/AFNetworking%E6%A1%86%E6%9E%B6%E5%88%86%E6%9E%90/</url>
+      <content type="html"><![CDATA[<p>想必AFNetworking网络请求框架，每个iOS开发攻城狮都晓得，也会使用，但是其内部构造及原理对小白来说还是有些生疏，这篇文章我们就来探索AFNetworking的神秘。</p>
+<p>说明：本篇文章并非原创，文章底部有原文链接，之所以整理，是因为这是学习的过程，也是整理零散知识的过程，每一遍的来过都会有意外收获。</p>
+<h2 id="AFN的结构"><a href="#AFN的结构" class="headerlink" title="AFN的结构"></a>AFN的结构</h2><p>首先我们来看看AFN的结构：</p>
+<p><img src="/img/AFN结构图.png" alt=""></p>
+<p>从上图可以看出，除了头文件和Support Files，AFNetworking是由NSURLSession、Reachability、Security、Serialization、UIKit五部分组成。</p>
+<ol>
+<li><strong>NSURLSession</strong>：网络通信模块（核心模块）对应AFNetworking中的 AFURLSessionManager和对HTTP协议进行特化处理的AFHTTPSessionManager，AFHTTPSessionManager是继承于AFURLSessionmanager的。</li>
+<li><strong>Reachability</strong>：网络状态监听模块</li>
+<li><strong>Security</strong>：网络通讯安全策略模块 </li>
+<li><strong>Seriaalization</strong>：网络通信信息序列化、反序列化模块</li>
+<li><strong>UIKit</strong>：对于IOSUIKit的扩展库</li>
+</ol>
+<h2 id="核心模块NSURLSession"><a href="#核心模块NSURLSession" class="headerlink" title="核心模块NSURLSession"></a>核心模块NSURLSession</h2><h3 id="1、NSURLSession由三个基本模块构成："><a href="#1、NSURLSession由三个基本模块构成：" class="headerlink" title="1、NSURLSession由三个基本模块构成："></a>1、NSURLSession由三个基本模块构成：</h3><ul>
+<li>NSURLSession</li>
+<li>NSURLSessionConfiguation</li>
+<li>NSURLSessionTask</li>
+</ul>
+<p>NSURLSession相对于平时通信中的会话，但本身却不会进行网络数据传输，它会通过多个NSURLSessionTask去执行每次的网络请求</p>
+<p>NSURLSession的行为取决于三个方面。包括</p>
+<ul>
+<li>NSURLSession的类型</li>
+<li>NSURLSessionTask的类型</li>
+<li>在创建task时APP是否处于前端</li>
+</ul>
+<h3 id="2、NSURLSession有三种类型"><a href="#2、NSURLSession有三种类型" class="headerlink" title="2、NSURLSession有三种类型"></a>2、NSURLSession有三种类型</h3><ul>
+<li><p>defaultSession（默认会话模式）：将cache和creditials储存于本地</p>
+</li>
+<li><p>Ephemeral Session（瞬时会话模式）：对数据更加保密安全，并不会向本地储存任何数据，将cache和creditials储存在内存中，并和Session绑定，当Session销毁时，对应的数据也会被销毁。</p>
+</li>
+<li><p>backgroundSession（后台会话模式）：可以时APP处于后台时继续数据传输，其行为与defaultSession类似，但是所有的数据传输均由一个非本APP的进程来管理。也有一些功能上的限制。</p>
+</li>
+</ul>
+<p><strong>在创建Session对象时通过NSURLSessionConfigration来配置，可设置Session的delegate，Session一但配置完成，就不能修改，除非创建一个新的Session对象。</strong></p>
+<h3 id="3、NSURLSessionTask包括三种Task类型"><a href="#3、NSURLSessionTask包括三种Task类型" class="headerlink" title="3、NSURLSessionTask包括三种Task类型"></a>3、NSURLSessionTask包括三种Task类型</h3><ul>
+<li>NSURLSessionDataTask</li>
+<li>NSURLSessionDownLoadTask</li>
+<li>NSURLSessionUploadTask</li>
+</ul>
+<p>所有的Task状态都是暂停的，需要用[Task resume]启动Task</p>
+<h3 id="4、NSURLSession有两种获取数据的方式"><a href="#4、NSURLSession有两种获取数据的方式" class="headerlink" title="4、NSURLSession有两种获取数据的方式"></a>4、NSURLSession有两种获取数据的方式</h3><ul>
+<li>初始化session时指定delegate，在代理方法中返回数据，需要实现NSURLSession的两个代理方法</li>
+<li>初始化Session时未指定delegate的，通过block回调返回数据。</li>
+</ul>
+<h3 id="5、NSURLSession对象的销毁，有两种销毁模式"><a href="#5、NSURLSession对象的销毁，有两种销毁模式" class="headerlink" title="5、NSURLSession对象的销毁，有两种销毁模式"></a>5、NSURLSession对象的销毁，有两种销毁模式</h3><ul>
+<li><ul>
+<li>(void)invalidateAndCancel 取消该Session中的所有Task，销毁所有delegate、block和Session自身，调用后Session不能再复用</li>
+</ul>
+</li>
+<li><ul>
+<li>(void)finishTasksAndInvalidate 会立即返回，但不会取消已启动的task，而是当这些task完成时，调用delegate</li>
+</ul>
+</li>
+</ul>
+<p>这里有个地方需要注意，即：NSURLSession对象对其delegate都是强引用的，只有当Session对象invalidate， 才会释放delegate，否则会出现memory leak。</p>
+<p><strong>使用Session加速网络访问速度，使用同一个Session中的task访问数据，不用每次都实现三次握手，复用之前服务器和客户端之间的网络链接，从而加快访问速度。</strong></p>
+<h2 id="网络请求的过程"><a href="#网络请求的过程" class="headerlink" title="网络请求的过程"></a>网络请求的过程</h2><p>创建NSURLSessionConfig对象，用创建的config对象配置初始化NSURLSession，创建NSURLSessionTask对象并resume执行，用delegate或者block回调返回数据。</p>
+<p>AFURLSessionManager封装了上述网络交互功能<br>AFURLSessionManager请求过程：</p>
+<ol>
+<li>初始化AFURLSessionManager</li>
+<li>获取AFURLSessionManager的Task对象</li>
+<li>启动Task</li>
+</ol>
+<p>AFURLSessionManager会为每一个Task创建一个AFURLSessionmanagerTaskDelegate对象，manager会让其处理各个Task的具体事务，从而实现了manager对多个Task的管理</p>
+<p>初始化好manager后，获取一个网络请求的Task，生成一个Task对象，并创建了一个AFURLSessionmanagerTaskDelegate并将其关联，设置Task的上传和下载delegate，通过KVO监听download进度和upload进度</p>
+<h3 id="NSURLSessionDelegate的响应"><a href="#NSURLSessionDelegate的响应" class="headerlink" title="NSURLSessionDelegate的响应"></a>NSURLSessionDelegate的响应</h3><p>因为AFURLSessionmanager所管理的AFURLSession的delegate指向其自身，因此所有的NSURLSessiondelegate的回调地址都是AFURLSessionmanager，而AFURLSessionmanager又会根据是否需要具体处理会将AF delegate所响应的delegate，传递到对应的AF delegate去。</p>
+<h3 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h3><p><a href="https://www.jianshu.com/p/02b25f6d1e1f" target="_blank" rel="noopener">AFNetworking实现原理理解</a></p>
+]]></content>
+      
+        <categories>
+            
+            <category> 原理 </category>
+            
+        </categories>
+        
+        
+        <tags>
+            
+            <tag> Objective-C </tag>
+            
+        </tags>
+        
+    </entry>
+    
+    <entry>
       <title><![CDATA[Runtime之动态添加方法]]></title>
       <url>/2017/02/21/Runtime%E4%B9%8B%E5%8A%A8%E6%80%81%E6%B7%BB%E5%8A%A0%E6%96%B9%E6%B3%95/</url>
       <content type="html"><![CDATA[<ul>
@@ -177,7 +549,7 @@
     <entry>
       <title><![CDATA[LLDB]]></title>
       <url>/2017/01/05/LLDB/</url>
-      <content type="html"><![CDATA[<p>阿萨德</p>
+      <content type="html"><![CDATA[<p>待续</p>
 ]]></content>
       
         <categories>
