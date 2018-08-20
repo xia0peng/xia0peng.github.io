@@ -1,0 +1,85 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description"><title>iOS应用架构谈：网络层框架的设计 | 怪兽</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/7.0.0/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/1.0.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/1.0.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.7.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/3.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><!-- 加载gitment的css和js文件 -->
+<link rel="stylesheet" href="/css/default.css">
+<script src="/js/gitment.browser.js"></script><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">iOS应用架构谈：网络层框架的设计</h1><a id="logo" href="/.">怪兽</a><p class="description">技术沉淀，追求创新。</p></div><div id="nav-menu"><a class="current" href="/."><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about"><i class="fa fa-user"> 关于</i></a></div></div><div class="pure-g" id="layout"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">iOS应用架构谈：网络层框架的设计</h1><div class="post-meta">Mar 10, 2018<span> | </span><span class="category"><a href="/categories/iOS/">iOS</a></span><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> 阅读</span></span></div><div class="post-content"><h1 id="网络层跟业务对接部分的设计："><a href="#网络层跟业务对接部分的设计：" class="headerlink" title="网络层跟业务对接部分的设计："></a>网络层跟业务对接部分的设计：</h1><ol>
+<li>使用哪种交互模式来跟业务层做对接？</li>
+<li>是否有必要将API返回的数据封装成对象然后再交付给业务层？</li>
+<li>使用集约化调用方式还是离散型调用方式去调用API？</li>
+</ol>
+<h3 id="一、使用哪种交互模式来跟业务层做对接？"><a href="#一、使用哪种交互模式来跟业务层做对接？" class="headerlink" title="一、使用哪种交互模式来跟业务层做对接？"></a>一、使用哪种交互模式来跟业务层做对接？</h3><p>以什么方式将数据交付给业务层？</p>
+<ul>
+<li>以Delegate为主，Notification为辅。原因如下<ol>
+<li>尽可能减少跨层数据交流的可能，限制耦合</li>
+<li>统一回调方法，便于调试和维护</li>
+<li>在跟业务层对接的部分只采用一种对接手段（在我这儿就是只采用delegate这一个手段）限制灵活性，以此来交换应用的可维护性</li>
+<li>Notification也不是完全不能使用，当需求要求跨层时，我们就可以使用Notification，比如前面提到的网络条件切换，而且这个需求也是需要满足一对多的</li>
+</ol>
+</li>
+</ul>
+<p>交付什么样的数据给业务层？</p>
+<ul>
+<li>在设计网络层数据交付这部分时，添加了reformer（改革者）这个对象用于封装数据转化的逻辑，这个对象是一个独立对象，事实上，它是作为Adaptor（适配器）模式存在的。我们可以这么理解：想象一下我们洗澡时候使用的莲蓬头，水管里出来的水是API下发的原始数据。reformer就是莲蓬头上的不同水流挡板，需要什么模式，就拨到什么模式。</li>
+<li>（reformer本质上就是一个符合某个protocol的对象，在controller需要从api manager中获得数据的时候，顺便把reformer传进去，于是就能获得经过reformer重新洗过的数据，然后就可以直接使用了。）</li>
+<li>（reformer事实上是把转化的代码封装之后再从主体业务中拆分了出来，拆分出来之后不光降低了原有业务的复杂度，更重要的是，它提高了数据交付的灵活性。另外，由于Controller负责调度Manager和View，因此它是知道Manager和View之间的关系的，Controller知道了这个关系之后，就有了充要条件来为不同的View选择不同的Reformer，并用这个Reformer去改造Mananger的数据，然后ViewController获得了经过reformer处理过的数据之后，就可以直接交付给view去使用。Controller因此得到瘦身，负责业务数据转化的这部分代码也不用写在Controller里面，提高了可维护性。）</li>
+</ul>
+<ol>
+<li>要点1：reformer是一个符合ReformerProtocol的对象，它提供了通用的方法供Manager使用。</li>
+<li>要点2：API的原始数据（JSON对象）由Manager实例保管，reformer方法里面取Manager的原始数据(manager.rawData)做转换，然后交付出去。莲蓬头的水管部分是Manager，负责提供原始水流（数据流），reformer就是不同的模式，换什么reformer就能出来什么水流。</li>
+<li>要点3：例子中举的场景是一个API数据被多个View使用的情况，体现了reformer的一个特点：可以根据需要改变同一数据来源的展示方式。比如API数据展示的是“附近的小区”，那么这个数据可以被列表（XXXView）和地图（YYYView）共用，不同的view使用的数据的转化方式不一样，这就通过不同的reformer解决了。</li>
+<li>要点4：在一个view用来同一展示不同API数据的情况，reformer是绝佳利器。比如安居客的列表view的数据来源可能有三个：二手房列表API，租房列表API，新房列表API。这些API返回来的数据的value可能一致，但是key都是不一致的。这时候就可以通过同一个reformer来做数据的标准化输出，这样就使得view代码复用成为可能。这体现了reformer另外一个特点：同一个reformer出来的数据是高度标准化的。形象点说就是：只要莲蓬头不换，哪怕水管的水变成海水或者污水了，也依旧能够输出符合洗澡要求的淡水水流。</li>
+<li>要点5：有没有发现，使用reformer之后，Controller的代码简洁了很多？而且，数据原型在这种情况下就没有必要存在了，随之而来的成本也就被我们绕过了。</li>
+</ol>
+<p>在不使用特定对象表征数据的情况下，如何保持数据可读性？<br>保持reformer代码的可读性<br>不使用对象来表征数据的时候，事实上就是使用NSDictionary的时候。事实上，这个问题就是，如何在NSDictionary表征数据的情况下保持良好的可读性？<br>苹果已经给出了非常好的做法，用固定字符串做key，比如你在接收到KeyBoardWillShow的Notification时，带了一个userInfo，他的key就都是类似UIKeyboardAnimationCurveUserInfoKey这样的，所以我们采用这样的方案来维持可读性。<br>关于交付的NSDictionary，其实具体还是看view的需求，reformer的设计初衷是：通过reformer转化出来的可以直接是View，或者是view直接可以使用的对象（包括NSDictionary）。<br>综上，我对交付什么样的数据给业务层？这个问题的回答就是这样：<br>对于业务层而言，由Controller根据View和APIManager之间的关系，选择合适的reformer将View可以直接使用的数据（甚至reformer可以用来直接生成view）转化好之后交付给View。对于网络层而言，只需要保持住原始数据即可，不需要主动转化成数据原型。然后数据采用NSDictionary加Const字符串key来表征，避免了使用对象来表征带来的迁移困难，同时不失去可读性。 </p>
+<h3 id="二、集约型API调用方式和离散型API调用方式的选择？"><a href="#二、集约型API调用方式和离散型API调用方式的选择？" class="headerlink" title="二、集约型API调用方式和离散型API调用方式的选择？"></a>二、集约型API调用方式和离散型API调用方式的选择？</h3><p>集约型API调用其实就是所有API的调用只有一个类，然后这个类接收API名字，API参数，以及回调着陆点（可以是target-action，或者block，或者delegate等各种模式的着陆点）作为参数。然后执行类似startRequest这样的方法，它就会去根据这些参数起飞去调用API了，然后获得API数据之后再根据指定的着陆点去着陆。比如这样：</p>
+<figure class="highlight groovy"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[APIRequest <span class="string">startRequestWithApiName:</span>@<span class="string">"itemList.v1"</span> <span class="string">params:</span>params <span class="string">success:</span><span class="meta">@selector</span>(<span class="string">success:</span>) <span class="string">fail:</span><span class="meta">@selector</span>(<span class="string">fail:</span>) <span class="string">target:</span>self];</span><br><span class="line"></span><br><span class="line">离散型API调用是这样的，一个API对应于一个APIManager，然后这个APIManager只需要提供参数就能起飞，API名字、着陆方式都已经集成入APIManager中。</span><br></pre></td></tr></table></figure>
+<p>集约型API调用和离散型API调用这两者实现方案不是互斥的，单看下层，大家都是集约型。因为发起一个API请求之后，除去业务相关的部分（比如参数和API名字等），剩下的都是要统一处理的：加密，URL拼接，API请求的起飞和着陆，这些处理如果不用集约化的方式来实现，作者非癫即痴。然而对于整个网络层来说，尤其是业务方使用的那部分，我倾向于提供离散型的API调用方式，并不建议在业务层的代码直接使用集约型的API调用方式。原因如下：（业务部门为什么使用离散型API）</p>
+<ol>
+<li>原因1：当前请求正在外面飞着的时候，根据不同的业务需求存在两种不同的请求起飞策略：一个是取消新发起的请求，等待外面飞着的请求着陆。另一个是取消外面飞着的请求，让新发起的请求起飞。集约化的API调用方式如果要满足这样的需求，那么每次要调用的时候都要多写一部分判断和取消的代码，手段就做不到很干净。 ———————————前者的业务场景举个例子就是刷新页面的请求，刷新详情，刷新列表等。后者的业务场景举个例子是列表多维度筛选，比如你先筛选了商品类型，然后筛选了价格区间。当然，后者的情况不一定每次筛选都要调用API，我们先假设这种筛选每次都必须要通过调用API才能获得数据。<br>如果是离散型的API调用，在编写不同的APIManager时候就可以针对不同的API设置不同的起飞策略，在实际使用的时候，就可以不必关心起飞策略了，因为APIMananger里面已经写好了。</li>
+<li>原因2：便于针对某个API请求来进行AOP。在集约型的API调用方式下，如果要针对某个API请求的起飞和着陆过程进行AOP，这代码得写成什么样。。。噢，尼玛这画面太美别说看了，我都不敢想。</li>
+<li>原因3：当API请求的着陆点消失时，离散型的API调用方式能够更加透明地处理这种情况。——————————–当一个页面的请求正在天上飞的时候，用户等了好久不耐烦了，小手点了个back，然后ViewController被pop被回收。此时请求的着陆点就没了。这是很危险的情况，着陆点要是没了，就很容易crash的。一般来说处理这个情况都是在dealloc的时候取消当前页面所有的请求。如果是集约型的API调用，这个代码就要写到ViewController的dealloc里面，但如果是离散型的API调用，这个代码写到APIManager里面就可以了，然后随着ViewController的回收进程，APIManager也会被跟着回收，这部分代码就得到了调用的机会。这样业务方在使用的时候就可以不必关心着陆点消失的情况了，从而更加关注业务。</li>
+<li>原因4：离散型的API调用方式能够最大程度地给业务方提供灵活性，比如reformer机制就是基于离散型的API调用方式的。另外，如果是针对提供翻页机制的API，APIManager就能简单地提供loadNextPage方法去加载下一页，页码的管理就不用业务方去管理了。还有就是，如果要针对业务请求参数进行验证，比如用户填写注册信息，在离散型的APIManager里面实现就会非常轻松。</li>
+</ol>
+<p><strong>综上，关于集约型的API调用和离散型的API调用，我倾向于这样：对外提供一个BaseAPIManager来给业务方做派生，在BaseManager里面采用集约化的手段组装请求，放飞请求，然而业务方调用API的时候，则是以离散的API调用方式来调用。如果你的App只提供了集约化的方式，而没有离散方式的通道，那么我建议你再封装一层，便于业务方使用离散的API调用方式来放飞请求</strong></p>
+<p>怎么做APIManager的继承？</p>
+<p>如果要做成离散型的API调用，那么使用继承是逃不掉的。BaseAPIManager里面负责集约化的部分，外部派生的XXXAPIManager负责离散的部分，对于BaseAPIManager来说，离散的部分有一些是必要的，比如API名字等，而我们派生的目的，也是为了提供这些数据。</p>
+<p>网络层与业务层对接部分的小总结：</p>
+<ol>
+<li>使用delegate来做数据对接，仅在必要时采用Notification来做跨层访问</li>
+<li>交付NSDictionary给业务层，使用Const字符串作为Key来保持可读性</li>
+<li>提供reformer机制来处理网络层反馈的数据，这个机制很重要，好处极多</li>
+<li>网络层上部分使用离散型设计，下部分使用集约型设计</li>
+<li>设计合理的继承机制，让派生出来的APIManager受到限制，避免混乱</li>
+<li>应该不止这5点…</li>
+</ol>
+<h1 id="网络层的安全机制"><a href="#网络层的安全机制" class="headerlink" title="网络层的安全机制:"></a>网络层的安全机制:</h1><p><strong>1、判断API的调用请求是来自于经过授权的APP</strong></p>
+<ul>
+<li><p>使用这个机制的目的主要有两点</p>
+<ol>
+<li>确保API的调用者是来自你自己的APP，防止竞争对手爬你的API</li>
+<li>如果你对外提供了需要注册才能使用的API平台，那么你需要有这个机制来识别是否是注册用户调用了你的API</li>
+</ol>
+<p><strong>解决方案：设计签名</strong></p>
+<p>要达到第一个目的其实很简单，服务端需要给你一个密钥，每次调用API时，你使用这个密钥再加上API名字和API请求参数算一个hash出来，然后请求的时候带上这个hash。服务端收到请求之后，按照同样的密钥同样的算法也算一个hash出来，然后跟请求带来的hash做一个比较，如果一致，那么就表示这个API的调用者确实是你的APP。为了不让别人也获取到这个密钥，你最好不要把这个密钥存储在本地，直接写死在代码里面就好了。另外适当增加一下求Hash的算法的复杂度，那就是各种Hash算法（比如MD5）加点盐，再回炉跑一次Hash啥的。这样就能解决第一个目的了：确保你的API是来自于你自己的App。</p>
+<p>一般情况下大部分公司不会出现需要满足第二种情况的需求，除非公司开发了自己的API平台给第三方使用。这个需求跟上面的需求有一点不同：符合授权的API请求者不只是一个。所以在这种情况下，需要的安全机制会更加复杂一点。</p>
+<p>这里有一个较容易实现的方案：客户端调用API的时候，把自己的密钥通过一个可逆的加密算法加密后连着请求和加密之后的Hash一起送上去。当然，这个可逆的加密算法肯定是放在在调用API的SDK里面，编译好的。然后服务端拿到加密后的密钥和加密的Hash之后，解码得到原始密钥，然后再用它去算Hash，最后再进行比对。</p>
+</li>
+</ul>
+<p><strong>2、保证传输数据的安全</strong></p>
+<ul>
+<li><p>使用这个机制的主要目的有两点</p>
+<ol>
+<li>防止中间人攻击，比如说运营商很喜欢往用户的Http请求里面塞广告…</li>
+<li>SPDY依赖于HTTPS，而且是未来HTTP/2的基础，他们能够提高你APP在网络层整体的性能</li>
+</ol>
+<p><strong>解决方案：HTTPS</strong></p>
+<p>目前使用HTTPS的主要目的在于防止运营商往你的Response Data里面加广告啥的（中间人攻击），面对的威胁范围更广。从2011年开始，国外业界就已经提倡所有的请求（不光是API，还有网站）都走HTTPS，国内差不多晚了两年（2013年左右）才开始提倡这事，天猫是这两个月才开始做HTTPS的全APP迁移。<br>关于速度，HTTPS肯定是比HTTP慢的，毕竟多了一次握手，但挂上SPDY之后，有了链接复用，这方面的性能就有了较大提升。这里的性能提升并不是说一个请求原来要500ms能完成，然后现在只要300ms，这是不对的。所谓整体性能是基于大量请求去讨论的：同样的请求量（假设100个）在短期发生时，挂上SPDY之后完成这些任务所要花的时间比不用SPDY要少。SPDY还有Header压缩的功能，不过因为一个API请求本身已经比较小了，压缩数据量所带来的性能提升不会特别明显，所以就单个请求来看，性能的提升是比较小的。不过这是下一节要讨论的事儿了，这儿只是顺带说一下。</p>
+</li>
+</ul>
+<p><strong>3、安全机制小总结</strong></p>
+<p>这一节说了两种安全机制，一般来说第一种是标配，第二种属于可选配置。不过随着我国互联网基础设施的完善，移动设备性能的提高，以及优化技术的提高，第二种配置的缺点（速度慢）正在越来越微不足道，因此HTTPS也会成为不久之后的未来App的网络层安全机制标配。各位架构师们，如果你的App还没有挂HTTPS，现在就已经可以开始着手这件事情了。</p>
+</div><iframe src="/donate/?AliPayQR=/img/AliPayQR.png&amp;WeChatQR=/img/WeChatQR.png&amp;GitHub=null&amp;BTCQR=null&amp;BTCKEY=null&amp;PayPal=null" style="overflow-x:hidden; overflow-y:hidden; border:0xp none #fff; min-height:240px; width:100%;" frameborder="0" scrolling="no"></iframe><div class="tags"><a href="/tag/Objective-C/">Objective-C</a></div><div class="post-nav"><a class="pre" href="/2018/04/05/UI视图--图像显示原理与卡顿&amp;掉帧/">UI视图--图像显示原理与卡顿&amp;掉帧</a><a class="next" href="/2018/02/18/iOS Delegate 引发的血案/">iOS Delegate 引发的血案</a></div></div></div></div><div class="pure-u-1-4 hidden_mid_and_down"><div id="sidebar"><div class="widget"><div class="search-form"><input id="local-search-input" placeholder="Search" type="text" name="q" results="0"/><div id="local-search-result"></div></div></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/UI视图/">UI视图</a><span class="category-list-count">3</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/iOS/">iOS</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/principle/">原理</a><span class="category-list-count">7</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/principle/Runtime/">Runtime</a><span class="category-list-count">3</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/performance/">性能</a><span class="category-list-count">3</span></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tag/Objective-C/" style="font-size: 15px;">Objective-C</a> <a href="/tag/Runtime/" style="font-size: 15px;">Runtime</a> <a href="/tag/Swift/" style="font-size: 15px;">Swift</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最近文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2018/04/16/UI视图--离屏渲染/">UI视图--离屏渲染</a></li><li class="post-list-item"><a class="post-list-link" href="/2018/04/13/UI视图--UI绘制原理&异步绘制/">UI视图--UI绘制原理&异步绘制</a></li><li class="post-list-item"><a class="post-list-link" href="/2018/04/05/UI视图--图像显示原理与卡顿&掉帧/">UI视图--图像显示原理与卡顿&掉帧</a></li><li class="post-list-item"><a class="post-list-link" href="/2018/03/10/iOS应用架构谈：网络层框架的设计/">iOS应用架构谈：网络层框架的设计</a></li><li class="post-list-item"><a class="post-list-link" href="/2018/02/18/iOS Delegate 引发的血案/">iOS Delegate 引发的血案</a></li><li class="post-list-item"><a class="post-list-link" href="/2018/02/16/UITableView的优化进阶篇/">UITableView的优化进阶篇</a></li><li class="post-list-item"><a class="post-list-link" href="/2018/01/08/APP的优化/">APP的优化</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/12/26/UITableView的优化/">UITableView的优化</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/12/14/NStimer准确吗/">NStimer准确吗</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/11/18/iOS中的多线程/">iOS中的多线程</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://www.baidu.com/" title="百度" target="_blank">百度</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">Copyright © 2018 <a href="/." rel="nofollow">怪兽.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho. <span>您是访问本站的第<span id="busuanzi_value_site_uv"></span>位小伙伴</span> <script type="text/javascript">var cnzz_protocol = (("https:" == document.location.protocol) ? " https://" : " http://");document.write(unescape("%3Cspan id='cnzz_stat_icon_1271673961'%3E%3C/span%3E%3Cscript src='" + cnzz_protocol + "s13.cnzz.com/z_stat.php%3Fid%3D1271673961%26show%3Dpic1' type='text/javascript'%3E%3C/script%3E"));</script></a></div></div></div><a class="show" id="rocket" href="#top"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/3.2.5/jquery.fancybox.min.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/fancybox/3.2.5/jquery.fancybox.min.css"><script type="text/javascript" src="/js/search.js?v=0.0.0"></script><script>var search_path = 'search.xml';
+if (search_path.length == 0) {
+   search_path = 'search.xml';
+}
+var path = '/' + search_path;
+searchFunc(path, 'local-search-input', 'local-search-result');
+</script><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

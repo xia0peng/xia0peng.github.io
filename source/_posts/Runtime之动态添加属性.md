@@ -4,7 +4,7 @@ date: 2017-02-20 19:17:18
 
 description: 为什么要将Runtime的关联属性单独拿出来写一篇文章呢？ 因为单独来讲一个小知识点更加简洁，容易掌握，也是一种知识详细的梳理过程。篇幅越短读者就不容易疲劳，阅读更有效果。
 
-categories: 原理
+categories: [原理,Runtime]
 tags: [Objective-C,Runtime]
 toc: false 
 ---

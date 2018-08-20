@@ -3,6 +3,318 @@
   
     
     <entry>
+      <title><![CDATA[UI视图--离屏渲染]]></title>
+      <url>/2018/04/16/UI%E8%A7%86%E5%9B%BE--%E7%A6%BB%E5%B1%8F%E6%B8%B2%E6%9F%93/</url>
+      <content type="html"><![CDATA[<p>本文以删除view上的所有子视图为例，重点讲的是NSSet和NSArray的makeObjectsPerformSelector方法和enumerator方法</p>
+<h2 id="removeFromSuperview方法"><a href="#removeFromSuperview方法" class="headerlink" title="removeFromSuperview方法"></a>removeFromSuperview方法</h2><p>首先来看看常用的removeFromSuperview方法，下面是苹果官方定义：</p>
+<ul>
+<li>Unlinks the receiver from its superview and its window,<br>and removes it from the responder chain.</li>
+</ul>
+<ul>
+<li>译： 把接收者（当前view）从它的父视图移除，并删除它的响应链。 </li>
+</ul>
+<p>调用removeFromSuperview方法会将当前视图从其父视图移除。（注意：只是将自己从俯视图移除，以前总是误以为将自己所有自视图从俯视图移除）所以用for…in…的方法，取到每一个subview，让他们执行removeFromSuperView就可以达到效果</p>
+<figure class="highlight maxima"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> (UIView *<span class="built_in">view</span> <span class="keyword">in</span> [self.<span class="built_in">view</span> subviews]) &#123;</span><br><span class="line"></span><br><span class="line">        [<span class="built_in">view</span> removeFromSuperview];</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p> 注意：</p>
+<ol>
+<li>永远不要在你的view的drawRect方法中调用removeFromSuperview；</li>
+<li>removeFromSuperview的实质并不是将这个视图从内存中移除,而是将一个视图从他的父视图上删除。计算机删除的本质是，标记删除，当你删除一个东西的时候，系统只是将这块内存做了一个标记，表示目前无人使用，但是之前视图的内存地址存在。所以如果想让视图不存在，需要在移除之后置为nil。</li>
+</ol>
+<h2 id="makeObjectsPerformSelector"><a href="#makeObjectsPerformSelector" class="headerlink" title="makeObjectsPerformSelector"></a>makeObjectsPerformSelector</h2><figure class="highlight erlang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">- <span class="params">(void)</span>makeObjectsPerformSelector:<span class="params">(SEL)</span>aSelector;  </span><br><span class="line">- <span class="params">(void)</span>makeObjectsPerformSelector:<span class="params">(SEL)</span>aSelector withObject:<span class="params">(id)</span>argument;</span><br></pre></td></tr></table></figure>
+<p>介绍：让数组中的每个元素 都调用 aSelector  并把 withObject 后边的 argument 对象做为参数传给方法aSelector</p>
+<p>一行搞定删除子视图</p>
+<figure class="highlight scheme"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[<span class="name">self.view.sublayers</span> makeObjectsPerformSelector:@selector(<span class="name">removeFromSuperview</span>)]<span class="comment">;</span></span><br></pre></td></tr></table></figure>
+<p>带参数方法的使用：如果一个数组arry中存储了一组有hidden属性的对象（假设为view），需要将数组里所有对象的hide全部赋值为真，就可以这么写：</p>
+<figure class="highlight groovy"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[arry <span class="string">makeObjectsPerformSelector:</span><span class="meta">@selector</span>(<span class="string">setHidden:</span>) <span class="string">withObject:</span><span class="meta">@YES</span>];</span><br></pre></td></tr></table></figure>
+<p>这么写就相当于arry数组里面的每一个对象都调用了setHidden方法，并且参数为YES，不用再遍历，一行代码搞定，是不是很方便。</p>
+<p>但是若想设置为NO的话，则无效（亲测）。</p>
+<figure class="highlight groovy"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[arry <span class="string">makeObjectsPerformSelector:</span><span class="meta">@selector</span>(<span class="string">setHidden:</span>) <span class="string">withObject:</span><span class="meta">@NO</span>];</span><br></pre></td></tr></table></figure>
+<p>这是因为YES和NO都为BOOL类型，设置为YES时，传递的为非0的指针，所以会设置 view.hidden = YES，但若设置为NO时，传递的仍为非0的指针，所以执行的结果仍是 view.hidden = YES。具体可看<a href="https://www.cnblogs.com/Apologize/p/5383652.html" target="_blank" rel="noopener">这里</a>。</p>
+<p>但是可以用nil达到参数为NO的效果</p>
+<figure class="highlight groovy"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[arry <span class="string">makeObjectsPerformSelector:</span><span class="meta">@selector</span>(<span class="string">setHidden:</span>) <span class="string">withObject:</span>nil];</span><br></pre></td></tr></table></figure>
+<h2 id="enumerator"><a href="#enumerator" class="headerlink" title="enumerator"></a>enumerator</h2><figure class="highlight groovy"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">- (<span class="keyword">void</span>)<span class="string">enumerateObjectsUsingBlock:</span>block;</span><br></pre></td></tr></table></figure>
+<p>这个方法也是遍历数组，block里面的参数包括obj（运行的对象）、idx（下标）、stop（是否继续遍历的标志），<em>stop可以控制遍历何时停止，在需要停止时令</em>stop = YES即可（不要忘记前面的**），应该说，这个能满足基本所有的遍历需求了，有下标，有运行的对象，还有是否继续遍历的标志。</p>
+<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">NSArray</span> *xpArray = @[<span class="string">@"A"</span>, <span class="string">@"B"</span>, <span class="string">@"C"</span>, <span class="string">@"D"</span>, <span class="string">@"E"</span>];</span><br><span class="line">    </span><br><span class="line">    [xpArray enumerateObjectsUsingBlock:^(<span class="keyword">id</span>  _Nonnull obj, <span class="built_in">NSUInteger</span> idx, <span class="built_in">BOOL</span> * _Nonnull stop) &#123;</span><br><span class="line">        </span><br><span class="line">        <span class="built_in">NSLog</span>(<span class="string">@"%@"</span>, obj);</span><br><span class="line">        </span><br><span class="line">        <span class="keyword">if</span> ([obj isEqualToString:<span class="string">@"C"</span>]) &#123;</span><br><span class="line">            </span><br><span class="line">            *stop = <span class="literal">YES</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;];</span><br></pre></td></tr></table></figure>
+<p>不过反向遍历呢？苹果提供了另外一个方法：</p>
+<figure class="highlight hy"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[xpArray enumerateObjectsWithOptions:NSEnumerationReverse usingBlock:^(<span class="name"><span class="builtin-name">id</span></span> obj, NSUInteger idx, BOOLBOOL *stop) &#123;  </span><br><span class="line">    NSLog(@<span class="string">"idx=%d, id=%@"</span>, idx, obj)<span class="comment">;  </span></span><br><span class="line">&#125;]<span class="comment">;</span></span><br></pre></td></tr></table></figure>
+<p>这个enumerateObjectsWithOptions:usingBlock:方法比前面那个方法多了一个枚举类型的参数NSEnumerationReverse，这个参数指定了遍历的顺序。</p>
+<p>注意：这里要补充一点，这个方法是可以修改块签名，当我们已经明确集合中的元素类型时，可以把默认的签名id类型修改成已知类型，比如常见的NSString，这样既可以节省系统资源开销，也可以防止误向对象发送不存在的方法是引起的崩溃。</p>
+]]></content>
+      
+        <categories>
+            
+            <category> UI视图 </category>
+            
+        </categories>
+        
+        
+        <tags>
+            
+            <tag> Objective-C </tag>
+            
+        </tags>
+        
+    </entry>
+    
+    <entry>
+      <title><![CDATA[UI视图--UI绘制原理&异步绘制]]></title>
+      <url>/2018/04/13/UI%E8%A7%86%E5%9B%BE--UI%E7%BB%98%E5%88%B6%E5%8E%9F%E7%90%86&amp;%E5%BC%82%E6%AD%A5%E7%BB%98%E5%88%B6/</url>
+      <content type="html"><![CDATA[<p>本文以删除view上的所有子视图为例，重点讲的是NSSet和NSArray的makeObjectsPerformSelector方法和enumerator方法</p>
+<h2 id="removeFromSuperview方法"><a href="#removeFromSuperview方法" class="headerlink" title="removeFromSuperview方法"></a>removeFromSuperview方法</h2><p>首先来看看常用的removeFromSuperview方法，下面是苹果官方定义：</p>
+<ul>
+<li>Unlinks the receiver from its superview and its window,<br>and removes it from the responder chain.</li>
+</ul>
+<ul>
+<li>译： 把接收者（当前view）从它的父视图移除，并删除它的响应链。 </li>
+</ul>
+<p>调用removeFromSuperview方法会将当前视图从其父视图移除。（注意：只是将自己从俯视图移除，以前总是误以为将自己所有自视图从俯视图移除）所以用for…in…的方法，取到每一个subview，让他们执行removeFromSuperView就可以达到效果</p>
+<figure class="highlight maxima"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> (UIView *<span class="built_in">view</span> <span class="keyword">in</span> [self.<span class="built_in">view</span> subviews]) &#123;</span><br><span class="line"></span><br><span class="line">        [<span class="built_in">view</span> removeFromSuperview];</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p> 注意：</p>
+<ol>
+<li>永远不要在你的view的drawRect方法中调用removeFromSuperview；</li>
+<li>removeFromSuperview的实质并不是将这个视图从内存中移除,而是将一个视图从他的父视图上删除。计算机删除的本质是，标记删除，当你删除一个东西的时候，系统只是将这块内存做了一个标记，表示目前无人使用，但是之前视图的内存地址存在。所以如果想让视图不存在，需要在移除之后置为nil。</li>
+</ol>
+<h2 id="makeObjectsPerformSelector"><a href="#makeObjectsPerformSelector" class="headerlink" title="makeObjectsPerformSelector"></a>makeObjectsPerformSelector</h2><figure class="highlight erlang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">- <span class="params">(void)</span>makeObjectsPerformSelector:<span class="params">(SEL)</span>aSelector;  </span><br><span class="line">- <span class="params">(void)</span>makeObjectsPerformSelector:<span class="params">(SEL)</span>aSelector withObject:<span class="params">(id)</span>argument;</span><br></pre></td></tr></table></figure>
+<p>介绍：让数组中的每个元素 都调用 aSelector  并把 withObject 后边的 argument 对象做为参数传给方法aSelector</p>
+<p>一行搞定删除子视图</p>
+<figure class="highlight scheme"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[<span class="name">self.view.sublayers</span> makeObjectsPerformSelector:@selector(<span class="name">removeFromSuperview</span>)]<span class="comment">;</span></span><br></pre></td></tr></table></figure>
+<p>带参数方法的使用：如果一个数组arry中存储了一组有hidden属性的对象（假设为view），需要将数组里所有对象的hide全部赋值为真，就可以这么写：</p>
+<figure class="highlight groovy"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[arry <span class="string">makeObjectsPerformSelector:</span><span class="meta">@selector</span>(<span class="string">setHidden:</span>) <span class="string">withObject:</span><span class="meta">@YES</span>];</span><br></pre></td></tr></table></figure>
+<p>这么写就相当于arry数组里面的每一个对象都调用了setHidden方法，并且参数为YES，不用再遍历，一行代码搞定，是不是很方便。</p>
+<p>但是若想设置为NO的话，则无效（亲测）。</p>
+<figure class="highlight groovy"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[arry <span class="string">makeObjectsPerformSelector:</span><span class="meta">@selector</span>(<span class="string">setHidden:</span>) <span class="string">withObject:</span><span class="meta">@NO</span>];</span><br></pre></td></tr></table></figure>
+<p>这是因为YES和NO都为BOOL类型，设置为YES时，传递的为非0的指针，所以会设置 view.hidden = YES，但若设置为NO时，传递的仍为非0的指针，所以执行的结果仍是 view.hidden = YES。具体可看<a href="https://www.cnblogs.com/Apologize/p/5383652.html" target="_blank" rel="noopener">这里</a>。</p>
+<p>但是可以用nil达到参数为NO的效果</p>
+<figure class="highlight groovy"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[arry <span class="string">makeObjectsPerformSelector:</span><span class="meta">@selector</span>(<span class="string">setHidden:</span>) <span class="string">withObject:</span>nil];</span><br></pre></td></tr></table></figure>
+<h2 id="enumerator"><a href="#enumerator" class="headerlink" title="enumerator"></a>enumerator</h2><figure class="highlight groovy"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">- (<span class="keyword">void</span>)<span class="string">enumerateObjectsUsingBlock:</span>block;</span><br></pre></td></tr></table></figure>
+<p>这个方法也是遍历数组，block里面的参数包括obj（运行的对象）、idx（下标）、stop（是否继续遍历的标志），<em>stop可以控制遍历何时停止，在需要停止时令</em>stop = YES即可（不要忘记前面的**），应该说，这个能满足基本所有的遍历需求了，有下标，有运行的对象，还有是否继续遍历的标志。</p>
+<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">NSArray</span> *xpArray = @[<span class="string">@"A"</span>, <span class="string">@"B"</span>, <span class="string">@"C"</span>, <span class="string">@"D"</span>, <span class="string">@"E"</span>];</span><br><span class="line">    </span><br><span class="line">    [xpArray enumerateObjectsUsingBlock:^(<span class="keyword">id</span>  _Nonnull obj, <span class="built_in">NSUInteger</span> idx, <span class="built_in">BOOL</span> * _Nonnull stop) &#123;</span><br><span class="line">        </span><br><span class="line">        <span class="built_in">NSLog</span>(<span class="string">@"%@"</span>, obj);</span><br><span class="line">        </span><br><span class="line">        <span class="keyword">if</span> ([obj isEqualToString:<span class="string">@"C"</span>]) &#123;</span><br><span class="line">            </span><br><span class="line">            *stop = <span class="literal">YES</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;];</span><br></pre></td></tr></table></figure>
+<p>不过反向遍历呢？苹果提供了另外一个方法：</p>
+<figure class="highlight hy"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[xpArray enumerateObjectsWithOptions:NSEnumerationReverse usingBlock:^(<span class="name"><span class="builtin-name">id</span></span> obj, NSUInteger idx, BOOLBOOL *stop) &#123;  </span><br><span class="line">    NSLog(@<span class="string">"idx=%d, id=%@"</span>, idx, obj)<span class="comment">;  </span></span><br><span class="line">&#125;]<span class="comment">;</span></span><br></pre></td></tr></table></figure>
+<p>这个enumerateObjectsWithOptions:usingBlock:方法比前面那个方法多了一个枚举类型的参数NSEnumerationReverse，这个参数指定了遍历的顺序。</p>
+<p>注意：这里要补充一点，这个方法是可以修改块签名，当我们已经明确集合中的元素类型时，可以把默认的签名id类型修改成已知类型，比如常见的NSString，这样既可以节省系统资源开销，也可以防止误向对象发送不存在的方法是引起的崩溃。</p>
+]]></content>
+      
+        <categories>
+            
+            <category> UI视图 </category>
+            
+        </categories>
+        
+        
+        <tags>
+            
+            <tag> Objective-C </tag>
+            
+        </tags>
+        
+    </entry>
+    
+    <entry>
+      <title><![CDATA[UI视图--图像显示原理与卡顿&掉帧]]></title>
+      <url>/2018/04/05/UI%E8%A7%86%E5%9B%BE--%E5%9B%BE%E5%83%8F%E6%98%BE%E7%A4%BA%E5%8E%9F%E7%90%86%E4%B8%8E%E5%8D%A1%E9%A1%BF&amp;%E6%8E%89%E5%B8%A7/</url>
+      <content type="html"><![CDATA[<p>本文以删除view上的所有子视图为例，重点讲的是NSSet和NSArray的makeObjectsPerformSelector方法和enumerator方法</p>
+<h2 id="removeFromSuperview方法"><a href="#removeFromSuperview方法" class="headerlink" title="removeFromSuperview方法"></a>removeFromSuperview方法</h2><p>首先来看看常用的removeFromSuperview方法，下面是苹果官方定义：</p>
+<ul>
+<li>Unlinks the receiver from its superview and its window,<br>and removes it from the responder chain.</li>
+</ul>
+<ul>
+<li>译： 把接收者（当前view）从它的父视图移除，并删除它的响应链。 </li>
+</ul>
+<p>调用removeFromSuperview方法会将当前视图从其父视图移除。（注意：只是将自己从俯视图移除，以前总是误以为将自己所有自视图从俯视图移除）所以用for…in…的方法，取到每一个subview，让他们执行removeFromSuperView就可以达到效果</p>
+<figure class="highlight maxima"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> (UIView *<span class="built_in">view</span> <span class="keyword">in</span> [self.<span class="built_in">view</span> subviews]) &#123;</span><br><span class="line"></span><br><span class="line">        [<span class="built_in">view</span> removeFromSuperview];</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p> 注意：</p>
+<ol>
+<li>永远不要在你的view的drawRect方法中调用removeFromSuperview；</li>
+<li>removeFromSuperview的实质并不是将这个视图从内存中移除,而是将一个视图从他的父视图上删除。计算机删除的本质是，标记删除，当你删除一个东西的时候，系统只是将这块内存做了一个标记，表示目前无人使用，但是之前视图的内存地址存在。所以如果想让视图不存在，需要在移除之后置为nil。</li>
+</ol>
+<h2 id="makeObjectsPerformSelector"><a href="#makeObjectsPerformSelector" class="headerlink" title="makeObjectsPerformSelector"></a>makeObjectsPerformSelector</h2><figure class="highlight erlang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">- <span class="params">(void)</span>makeObjectsPerformSelector:<span class="params">(SEL)</span>aSelector;  </span><br><span class="line">- <span class="params">(void)</span>makeObjectsPerformSelector:<span class="params">(SEL)</span>aSelector withObject:<span class="params">(id)</span>argument;</span><br></pre></td></tr></table></figure>
+<p>介绍：让数组中的每个元素 都调用 aSelector  并把 withObject 后边的 argument 对象做为参数传给方法aSelector</p>
+<p>一行搞定删除子视图</p>
+<figure class="highlight scheme"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[<span class="name">self.view.sublayers</span> makeObjectsPerformSelector:@selector(<span class="name">removeFromSuperview</span>)]<span class="comment">;</span></span><br></pre></td></tr></table></figure>
+<p>带参数方法的使用：如果一个数组arry中存储了一组有hidden属性的对象（假设为view），需要将数组里所有对象的hide全部赋值为真，就可以这么写：</p>
+<figure class="highlight groovy"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[arry <span class="string">makeObjectsPerformSelector:</span><span class="meta">@selector</span>(<span class="string">setHidden:</span>) <span class="string">withObject:</span><span class="meta">@YES</span>];</span><br></pre></td></tr></table></figure>
+<p>这么写就相当于arry数组里面的每一个对象都调用了setHidden方法，并且参数为YES，不用再遍历，一行代码搞定，是不是很方便。</p>
+<p>但是若想设置为NO的话，则无效（亲测）。</p>
+<figure class="highlight groovy"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[arry <span class="string">makeObjectsPerformSelector:</span><span class="meta">@selector</span>(<span class="string">setHidden:</span>) <span class="string">withObject:</span><span class="meta">@NO</span>];</span><br></pre></td></tr></table></figure>
+<p>这是因为YES和NO都为BOOL类型，设置为YES时，传递的为非0的指针，所以会设置 view.hidden = YES，但若设置为NO时，传递的仍为非0的指针，所以执行的结果仍是 view.hidden = YES。具体可看<a href="https://www.cnblogs.com/Apologize/p/5383652.html" target="_blank" rel="noopener">这里</a>。</p>
+<p>但是可以用nil达到参数为NO的效果</p>
+<figure class="highlight groovy"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[arry <span class="string">makeObjectsPerformSelector:</span><span class="meta">@selector</span>(<span class="string">setHidden:</span>) <span class="string">withObject:</span>nil];</span><br></pre></td></tr></table></figure>
+<h2 id="enumerator"><a href="#enumerator" class="headerlink" title="enumerator"></a>enumerator</h2><figure class="highlight groovy"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">- (<span class="keyword">void</span>)<span class="string">enumerateObjectsUsingBlock:</span>block;</span><br></pre></td></tr></table></figure>
+<p>这个方法也是遍历数组，block里面的参数包括obj（运行的对象）、idx（下标）、stop（是否继续遍历的标志），<em>stop可以控制遍历何时停止，在需要停止时令</em>stop = YES即可（不要忘记前面的**），应该说，这个能满足基本所有的遍历需求了，有下标，有运行的对象，还有是否继续遍历的标志。</p>
+<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">NSArray</span> *xpArray = @[<span class="string">@"A"</span>, <span class="string">@"B"</span>, <span class="string">@"C"</span>, <span class="string">@"D"</span>, <span class="string">@"E"</span>];</span><br><span class="line">    </span><br><span class="line">    [xpArray enumerateObjectsUsingBlock:^(<span class="keyword">id</span>  _Nonnull obj, <span class="built_in">NSUInteger</span> idx, <span class="built_in">BOOL</span> * _Nonnull stop) &#123;</span><br><span class="line">        </span><br><span class="line">        <span class="built_in">NSLog</span>(<span class="string">@"%@"</span>, obj);</span><br><span class="line">        </span><br><span class="line">        <span class="keyword">if</span> ([obj isEqualToString:<span class="string">@"C"</span>]) &#123;</span><br><span class="line">            </span><br><span class="line">            *stop = <span class="literal">YES</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;];</span><br></pre></td></tr></table></figure>
+<p>不过反向遍历呢？苹果提供了另外一个方法：</p>
+<figure class="highlight hy"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[xpArray enumerateObjectsWithOptions:NSEnumerationReverse usingBlock:^(<span class="name"><span class="builtin-name">id</span></span> obj, NSUInteger idx, BOOLBOOL *stop) &#123;  </span><br><span class="line">    NSLog(@<span class="string">"idx=%d, id=%@"</span>, idx, obj)<span class="comment">;  </span></span><br><span class="line">&#125;]<span class="comment">;</span></span><br></pre></td></tr></table></figure>
+<p>这个enumerateObjectsWithOptions:usingBlock:方法比前面那个方法多了一个枚举类型的参数NSEnumerationReverse，这个参数指定了遍历的顺序。</p>
+<p>注意：这里要补充一点，这个方法是可以修改块签名，当我们已经明确集合中的元素类型时，可以把默认的签名id类型修改成已知类型，比如常见的NSString，这样既可以节省系统资源开销，也可以防止误向对象发送不存在的方法是引起的崩溃。</p>
+]]></content>
+      
+        <categories>
+            
+            <category> UI视图 </category>
+            
+        </categories>
+        
+        
+        <tags>
+            
+            <tag> Objective-C </tag>
+            
+        </tags>
+        
+    </entry>
+    
+    <entry>
+      <title><![CDATA[iOS应用架构谈：网络层框架的设计]]></title>
+      <url>/2018/03/10/iOS%E5%BA%94%E7%94%A8%E6%9E%B6%E6%9E%84%E8%B0%88%EF%BC%9A%E7%BD%91%E7%BB%9C%E5%B1%82%E6%A1%86%E6%9E%B6%E7%9A%84%E8%AE%BE%E8%AE%A1/</url>
+      <content type="html"><![CDATA[<h1 id="网络层跟业务对接部分的设计："><a href="#网络层跟业务对接部分的设计：" class="headerlink" title="网络层跟业务对接部分的设计："></a>网络层跟业务对接部分的设计：</h1><ol>
+<li>使用哪种交互模式来跟业务层做对接？</li>
+<li>是否有必要将API返回的数据封装成对象然后再交付给业务层？</li>
+<li>使用集约化调用方式还是离散型调用方式去调用API？</li>
+</ol>
+<h3 id="一、使用哪种交互模式来跟业务层做对接？"><a href="#一、使用哪种交互模式来跟业务层做对接？" class="headerlink" title="一、使用哪种交互模式来跟业务层做对接？"></a>一、使用哪种交互模式来跟业务层做对接？</h3><p>以什么方式将数据交付给业务层？</p>
+<ul>
+<li>以Delegate为主，Notification为辅。原因如下<ol>
+<li>尽可能减少跨层数据交流的可能，限制耦合</li>
+<li>统一回调方法，便于调试和维护</li>
+<li>在跟业务层对接的部分只采用一种对接手段（在我这儿就是只采用delegate这一个手段）限制灵活性，以此来交换应用的可维护性</li>
+<li>Notification也不是完全不能使用，当需求要求跨层时，我们就可以使用Notification，比如前面提到的网络条件切换，而且这个需求也是需要满足一对多的</li>
+</ol>
+</li>
+</ul>
+<p>交付什么样的数据给业务层？</p>
+<ul>
+<li>在设计网络层数据交付这部分时，添加了reformer（改革者）这个对象用于封装数据转化的逻辑，这个对象是一个独立对象，事实上，它是作为Adaptor（适配器）模式存在的。我们可以这么理解：想象一下我们洗澡时候使用的莲蓬头，水管里出来的水是API下发的原始数据。reformer就是莲蓬头上的不同水流挡板，需要什么模式，就拨到什么模式。</li>
+<li>（reformer本质上就是一个符合某个protocol的对象，在controller需要从api manager中获得数据的时候，顺便把reformer传进去，于是就能获得经过reformer重新洗过的数据，然后就可以直接使用了。）</li>
+<li>（reformer事实上是把转化的代码封装之后再从主体业务中拆分了出来，拆分出来之后不光降低了原有业务的复杂度，更重要的是，它提高了数据交付的灵活性。另外，由于Controller负责调度Manager和View，因此它是知道Manager和View之间的关系的，Controller知道了这个关系之后，就有了充要条件来为不同的View选择不同的Reformer，并用这个Reformer去改造Mananger的数据，然后ViewController获得了经过reformer处理过的数据之后，就可以直接交付给view去使用。Controller因此得到瘦身，负责业务数据转化的这部分代码也不用写在Controller里面，提高了可维护性。）</li>
+</ul>
+<ol>
+<li>要点1：reformer是一个符合ReformerProtocol的对象，它提供了通用的方法供Manager使用。</li>
+<li>要点2：API的原始数据（JSON对象）由Manager实例保管，reformer方法里面取Manager的原始数据(manager.rawData)做转换，然后交付出去。莲蓬头的水管部分是Manager，负责提供原始水流（数据流），reformer就是不同的模式，换什么reformer就能出来什么水流。</li>
+<li>要点3：例子中举的场景是一个API数据被多个View使用的情况，体现了reformer的一个特点：可以根据需要改变同一数据来源的展示方式。比如API数据展示的是“附近的小区”，那么这个数据可以被列表（XXXView）和地图（YYYView）共用，不同的view使用的数据的转化方式不一样，这就通过不同的reformer解决了。</li>
+<li>要点4：在一个view用来同一展示不同API数据的情况，reformer是绝佳利器。比如安居客的列表view的数据来源可能有三个：二手房列表API，租房列表API，新房列表API。这些API返回来的数据的value可能一致，但是key都是不一致的。这时候就可以通过同一个reformer来做数据的标准化输出，这样就使得view代码复用成为可能。这体现了reformer另外一个特点：同一个reformer出来的数据是高度标准化的。形象点说就是：只要莲蓬头不换，哪怕水管的水变成海水或者污水了，也依旧能够输出符合洗澡要求的淡水水流。</li>
+<li>要点5：有没有发现，使用reformer之后，Controller的代码简洁了很多？而且，数据原型在这种情况下就没有必要存在了，随之而来的成本也就被我们绕过了。</li>
+</ol>
+<p>在不使用特定对象表征数据的情况下，如何保持数据可读性？<br>保持reformer代码的可读性<br>不使用对象来表征数据的时候，事实上就是使用NSDictionary的时候。事实上，这个问题就是，如何在NSDictionary表征数据的情况下保持良好的可读性？<br>苹果已经给出了非常好的做法，用固定字符串做key，比如你在接收到KeyBoardWillShow的Notification时，带了一个userInfo，他的key就都是类似UIKeyboardAnimationCurveUserInfoKey这样的，所以我们采用这样的方案来维持可读性。<br>关于交付的NSDictionary，其实具体还是看view的需求，reformer的设计初衷是：通过reformer转化出来的可以直接是View，或者是view直接可以使用的对象（包括NSDictionary）。<br>综上，我对交付什么样的数据给业务层？这个问题的回答就是这样：<br>对于业务层而言，由Controller根据View和APIManager之间的关系，选择合适的reformer将View可以直接使用的数据（甚至reformer可以用来直接生成view）转化好之后交付给View。对于网络层而言，只需要保持住原始数据即可，不需要主动转化成数据原型。然后数据采用NSDictionary加Const字符串key来表征，避免了使用对象来表征带来的迁移困难，同时不失去可读性。 </p>
+<h3 id="二、集约型API调用方式和离散型API调用方式的选择？"><a href="#二、集约型API调用方式和离散型API调用方式的选择？" class="headerlink" title="二、集约型API调用方式和离散型API调用方式的选择？"></a>二、集约型API调用方式和离散型API调用方式的选择？</h3><p>集约型API调用其实就是所有API的调用只有一个类，然后这个类接收API名字，API参数，以及回调着陆点（可以是target-action，或者block，或者delegate等各种模式的着陆点）作为参数。然后执行类似startRequest这样的方法，它就会去根据这些参数起飞去调用API了，然后获得API数据之后再根据指定的着陆点去着陆。比如这样：</p>
+<figure class="highlight groovy"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[APIRequest <span class="string">startRequestWithApiName:</span>@<span class="string">"itemList.v1"</span> <span class="string">params:</span>params <span class="string">success:</span><span class="meta">@selector</span>(<span class="string">success:</span>) <span class="string">fail:</span><span class="meta">@selector</span>(<span class="string">fail:</span>) <span class="string">target:</span>self];</span><br><span class="line"></span><br><span class="line">离散型API调用是这样的，一个API对应于一个APIManager，然后这个APIManager只需要提供参数就能起飞，API名字、着陆方式都已经集成入APIManager中。</span><br></pre></td></tr></table></figure>
+<p>集约型API调用和离散型API调用这两者实现方案不是互斥的，单看下层，大家都是集约型。因为发起一个API请求之后，除去业务相关的部分（比如参数和API名字等），剩下的都是要统一处理的：加密，URL拼接，API请求的起飞和着陆，这些处理如果不用集约化的方式来实现，作者非癫即痴。然而对于整个网络层来说，尤其是业务方使用的那部分，我倾向于提供离散型的API调用方式，并不建议在业务层的代码直接使用集约型的API调用方式。原因如下：（业务部门为什么使用离散型API）</p>
+<ol>
+<li>原因1：当前请求正在外面飞着的时候，根据不同的业务需求存在两种不同的请求起飞策略：一个是取消新发起的请求，等待外面飞着的请求着陆。另一个是取消外面飞着的请求，让新发起的请求起飞。集约化的API调用方式如果要满足这样的需求，那么每次要调用的时候都要多写一部分判断和取消的代码，手段就做不到很干净。 ———————————前者的业务场景举个例子就是刷新页面的请求，刷新详情，刷新列表等。后者的业务场景举个例子是列表多维度筛选，比如你先筛选了商品类型，然后筛选了价格区间。当然，后者的情况不一定每次筛选都要调用API，我们先假设这种筛选每次都必须要通过调用API才能获得数据。<br>如果是离散型的API调用，在编写不同的APIManager时候就可以针对不同的API设置不同的起飞策略，在实际使用的时候，就可以不必关心起飞策略了，因为APIMananger里面已经写好了。</li>
+<li>原因2：便于针对某个API请求来进行AOP。在集约型的API调用方式下，如果要针对某个API请求的起飞和着陆过程进行AOP，这代码得写成什么样。。。噢，尼玛这画面太美别说看了，我都不敢想。</li>
+<li>原因3：当API请求的着陆点消失时，离散型的API调用方式能够更加透明地处理这种情况。——————————–当一个页面的请求正在天上飞的时候，用户等了好久不耐烦了，小手点了个back，然后ViewController被pop被回收。此时请求的着陆点就没了。这是很危险的情况，着陆点要是没了，就很容易crash的。一般来说处理这个情况都是在dealloc的时候取消当前页面所有的请求。如果是集约型的API调用，这个代码就要写到ViewController的dealloc里面，但如果是离散型的API调用，这个代码写到APIManager里面就可以了，然后随着ViewController的回收进程，APIManager也会被跟着回收，这部分代码就得到了调用的机会。这样业务方在使用的时候就可以不必关心着陆点消失的情况了，从而更加关注业务。</li>
+<li>原因4：离散型的API调用方式能够最大程度地给业务方提供灵活性，比如reformer机制就是基于离散型的API调用方式的。另外，如果是针对提供翻页机制的API，APIManager就能简单地提供loadNextPage方法去加载下一页，页码的管理就不用业务方去管理了。还有就是，如果要针对业务请求参数进行验证，比如用户填写注册信息，在离散型的APIManager里面实现就会非常轻松。</li>
+</ol>
+<p><strong>综上，关于集约型的API调用和离散型的API调用，我倾向于这样：对外提供一个BaseAPIManager来给业务方做派生，在BaseManager里面采用集约化的手段组装请求，放飞请求，然而业务方调用API的时候，则是以离散的API调用方式来调用。如果你的App只提供了集约化的方式，而没有离散方式的通道，那么我建议你再封装一层，便于业务方使用离散的API调用方式来放飞请求</strong></p>
+<p>怎么做APIManager的继承？</p>
+<p>如果要做成离散型的API调用，那么使用继承是逃不掉的。BaseAPIManager里面负责集约化的部分，外部派生的XXXAPIManager负责离散的部分，对于BaseAPIManager来说，离散的部分有一些是必要的，比如API名字等，而我们派生的目的，也是为了提供这些数据。</p>
+<p>网络层与业务层对接部分的小总结：</p>
+<ol>
+<li>使用delegate来做数据对接，仅在必要时采用Notification来做跨层访问</li>
+<li>交付NSDictionary给业务层，使用Const字符串作为Key来保持可读性</li>
+<li>提供reformer机制来处理网络层反馈的数据，这个机制很重要，好处极多</li>
+<li>网络层上部分使用离散型设计，下部分使用集约型设计</li>
+<li>设计合理的继承机制，让派生出来的APIManager受到限制，避免混乱</li>
+<li>应该不止这5点…</li>
+</ol>
+<h1 id="网络层的安全机制"><a href="#网络层的安全机制" class="headerlink" title="网络层的安全机制:"></a>网络层的安全机制:</h1><p><strong>1、判断API的调用请求是来自于经过授权的APP</strong></p>
+<ul>
+<li><p>使用这个机制的目的主要有两点</p>
+<ol>
+<li>确保API的调用者是来自你自己的APP，防止竞争对手爬你的API</li>
+<li>如果你对外提供了需要注册才能使用的API平台，那么你需要有这个机制来识别是否是注册用户调用了你的API</li>
+</ol>
+<p><strong>解决方案：设计签名</strong></p>
+<p>要达到第一个目的其实很简单，服务端需要给你一个密钥，每次调用API时，你使用这个密钥再加上API名字和API请求参数算一个hash出来，然后请求的时候带上这个hash。服务端收到请求之后，按照同样的密钥同样的算法也算一个hash出来，然后跟请求带来的hash做一个比较，如果一致，那么就表示这个API的调用者确实是你的APP。为了不让别人也获取到这个密钥，你最好不要把这个密钥存储在本地，直接写死在代码里面就好了。另外适当增加一下求Hash的算法的复杂度，那就是各种Hash算法（比如MD5）加点盐，再回炉跑一次Hash啥的。这样就能解决第一个目的了：确保你的API是来自于你自己的App。</p>
+<p>一般情况下大部分公司不会出现需要满足第二种情况的需求，除非公司开发了自己的API平台给第三方使用。这个需求跟上面的需求有一点不同：符合授权的API请求者不只是一个。所以在这种情况下，需要的安全机制会更加复杂一点。</p>
+<p>这里有一个较容易实现的方案：客户端调用API的时候，把自己的密钥通过一个可逆的加密算法加密后连着请求和加密之后的Hash一起送上去。当然，这个可逆的加密算法肯定是放在在调用API的SDK里面，编译好的。然后服务端拿到加密后的密钥和加密的Hash之后，解码得到原始密钥，然后再用它去算Hash，最后再进行比对。</p>
+</li>
+</ul>
+<p><strong>2、保证传输数据的安全</strong></p>
+<ul>
+<li><p>使用这个机制的主要目的有两点</p>
+<ol>
+<li>防止中间人攻击，比如说运营商很喜欢往用户的Http请求里面塞广告…</li>
+<li>SPDY依赖于HTTPS，而且是未来HTTP/2的基础，他们能够提高你APP在网络层整体的性能</li>
+</ol>
+<p><strong>解决方案：HTTPS</strong></p>
+<p>目前使用HTTPS的主要目的在于防止运营商往你的Response Data里面加广告啥的（中间人攻击），面对的威胁范围更广。从2011年开始，国外业界就已经提倡所有的请求（不光是API，还有网站）都走HTTPS，国内差不多晚了两年（2013年左右）才开始提倡这事，天猫是这两个月才开始做HTTPS的全APP迁移。<br>关于速度，HTTPS肯定是比HTTP慢的，毕竟多了一次握手，但挂上SPDY之后，有了链接复用，这方面的性能就有了较大提升。这里的性能提升并不是说一个请求原来要500ms能完成，然后现在只要300ms，这是不对的。所谓整体性能是基于大量请求去讨论的：同样的请求量（假设100个）在短期发生时，挂上SPDY之后完成这些任务所要花的时间比不用SPDY要少。SPDY还有Header压缩的功能，不过因为一个API请求本身已经比较小了，压缩数据量所带来的性能提升不会特别明显，所以就单个请求来看，性能的提升是比较小的。不过这是下一节要讨论的事儿了，这儿只是顺带说一下。</p>
+</li>
+</ul>
+<p><strong>3、安全机制小总结</strong></p>
+<p>这一节说了两种安全机制，一般来说第一种是标配，第二种属于可选配置。不过随着我国互联网基础设施的完善，移动设备性能的提高，以及优化技术的提高，第二种配置的缺点（速度慢）正在越来越微不足道，因此HTTPS也会成为不久之后的未来App的网络层安全机制标配。各位架构师们，如果你的App还没有挂HTTPS，现在就已经可以开始着手这件事情了。</p>
+]]></content>
+      
+        <categories>
+            
+            <category> iOS </category>
+            
+        </categories>
+        
+        
+        <tags>
+            
+            <tag> Objective-C </tag>
+            
+        </tags>
+        
+    </entry>
+    
+    <entry>
+      <title><![CDATA[iOS Delegate 引发的血案]]></title>
+      <url>/2018/02/18/iOS%20Delegate%20%E5%BC%95%E5%8F%91%E7%9A%84%E8%A1%80%E6%A1%88/</url>
+      <content type="html"><![CDATA[<p>今天在项目重构过程中遇到一个很神奇的 bug，和同组的小伙伴一起研究了好久终于排查出问题所在，当然大家应该已经猜到了这个问题是因为 Delegate 的使用所导致的。接下来我先简单的将这个问题描述一下</p>
+<h2 id="问题描述"><a href="#问题描述" class="headerlink" title="问题描述"></a>问题描述</h2><p><img src="/img/iOSDelegate引发的血案.png" alt=""></p>
+<ul>
+<li>矩形框1里面的每个标签对应一个 tableView, 该 tableView 都是由同一个类实例化所得。</li>
+<li>矩形框2是一个音频播放器，初始化是在 tableView 内的，UI在 tableViewCell 内实现的一个按钮。</li>
+<li>点击矩形框2内的按钮的时候，tableViewCell 通过代理通知 tableView 执行播放器播放操作并把相关数据字典dic传递给tableView。</li>
+<li>tableView 接收到代理后执行播放器的播放代理，同时会用到cell传递回来的数据</li>
+</ul>
+<p>操作描述</p>
+<ul>
+<li>进入到上图所示界面，默认选中的是全部标签，直接点击其余任意一个标签，然后再切换回到全部标签</li>
+<li>点击播放按钮，排查到 tableView 中 cell 的代理内数据dic值正常，播放器代理中数据dic值为空，导致无法播放</li>
+</ul>
+<h2 id="代码贴出来"><a href="#代码贴出来" class="headerlink" title="代码贴出来"></a>代码贴出来</h2><figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br></pre></td><td class="code"><pre><span class="line">YDLTalkTableView.m</span><br><span class="line"></span><br><span class="line"><span class="meta">#pragma mark - lify cycle</span></span><br><span class="line"><span class="meta">#pragma mark - DFPlayer为播放器</span></span><br><span class="line">- (<span class="keyword">instancetype</span>)initWithFrame:(<span class="built_in">CGRect</span>)frame style:(<span class="built_in">UITableViewStyle</span>)style withTab:(<span class="built_in">NSString</span> *)tab&#123;</span><br><span class="line">    <span class="keyword">self</span> = [<span class="keyword">super</span> initWithFrame:frame style:style];</span><br><span class="line">    <span class="keyword">if</span> (<span class="keyword">self</span>) &#123;</span><br><span class="line">        [DFPlayer shareInstance].category = DFPlayerAudioSessionCategorySoloAmbient;</span><br><span class="line">        [DFPlayer shareInstance].playMode = DFPlayerModeOnlyOnce;</span><br><span class="line">        [DFPlayer shareInstance].isObserveWWAN = <span class="literal">NO</span>;</span><br><span class="line">        [DFPlayer shareInstance].dataSource = <span class="keyword">self</span>;</span><br><span class="line">        [DFPlayer shareInstance].delegate = <span class="keyword">self</span>;</span><br><span class="line">        [[DFPlayer shareInstance] df_audioPause];</span><br><span class="line">        <span class="keyword">self</span>.delegate = <span class="keyword">self</span>;</span><br><span class="line">        <span class="keyword">self</span>.dataSource  = <span class="keyword">self</span>;</span><br><span class="line">        <span class="keyword">if</span> (@available(iOS <span class="number">11.0</span>, *)) &#123;</span><br><span class="line">            <span class="built_in">UIScrollView</span>.appearance.contentInsetAdjustmentBehavior = <span class="built_in">UIScrollViewContentInsetAdjustmentNever</span>;</span><br><span class="line">            <span class="keyword">self</span>.estimatedRowHeight = <span class="number">0</span>;</span><br><span class="line">            <span class="keyword">self</span>.estimatedSectionHeaderHeight = <span class="number">0</span>;</span><br><span class="line">            <span class="keyword">self</span>.estimatedSectionFooterHeight = <span class="number">0</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">// Fallback on earlier versions</span></span><br><span class="line">        &#125;</span><br><span class="line">        [<span class="keyword">self</span> registerClass:[YDLTalkTableViewCell <span class="keyword">class</span>] forCellReuseIdentifier:<span class="built_in">NSStringFromClass</span>([YDLTalkTableViewCell <span class="keyword">class</span>])];</span><br><span class="line">        [<span class="keyword">self</span> setSeparatorStyle:<span class="built_in">UITableViewCellSeparatorStyleNone</span>];</span><br><span class="line">        [<span class="keyword">self</span> setBackgroundColor:kBackGroundColor];</span><br><span class="line">        <span class="keyword">self</span>.tableFooterView = [<span class="built_in">UIView</span> new];</span><br><span class="line">        __<span class="keyword">weak</span> <span class="keyword">typeof</span>(<span class="keyword">self</span>) weakSelf = <span class="keyword">self</span>;</span><br><span class="line">        [<span class="keyword">self</span> loadHeaderRefreshWithHeaderRefreshingBlock:^&#123;</span><br><span class="line">            [weakSelf onHeader];</span><br><span class="line">        &#125;];</span><br><span class="line">        [<span class="keyword">self</span> loadFooterRefreshWithFootRefreshingBlock:^&#123;</span><br><span class="line">            [weakSelf onFooter];</span><br><span class="line">        &#125;];</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">self</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#pragma mark - cell的代理方法</span></span><br><span class="line">-(<span class="keyword">void</span>)bofangTalk:(<span class="built_in">NSDictionary</span>*)dict&#123;</span><br><span class="line">    _dict = dict;<span class="comment">//此处dict值为正常的</span></span><br><span class="line">    [MBProgressHUD showError:_dict[<span class="string">@"expert_name"</span>] toView:_viewController.view];</span><br><span class="line">    [[DFPlayer shareInstance] df_reloadData];</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#pragma mark - DFPLayer dataSource</span></span><br><span class="line">- (<span class="built_in">NSArray</span>&lt;DFPlayerModel *&gt; *)df_playerModelArray&#123;</span><br><span class="line">    <span class="built_in">NSLog</span>(<span class="string">@"%@"</span>, _dict);<span class="comment">//此处dict值为nil</span></span><br><span class="line">    <span class="built_in">NSMutableArray</span> *_df_ModelArray;</span><br><span class="line">    <span class="keyword">return</span> _df_ModelArray;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="问题解决"><a href="#问题解决" class="headerlink" title="问题解决"></a>问题解决</h2><p>我们都知道代理是属于一对一的关系，请看下面这段代码：</p>
+<figure class="highlight elm"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">- (instance<span class="keyword">type</span>)initWithFrame:(<span class="type">CGRect</span>)frame style:(<span class="type">UITableViewStyle</span>)style withTab:(<span class="type">NSString</span> *)tab&#123;</span><br><span class="line">    self = [super initWithFrame:frame style:style];</span><br><span class="line">    if (self) &#123;</span><br><span class="line">        [<span class="type">DFPlayer</span> shareInstance].dataSource = self;</span><br><span class="line">        [<span class="type">DFPlayer</span> shareInstance].delegate = self;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>当我们进入这个页面的时候首先创建的是“全部”标签下对应的tableView,这个时候播放器的代理是“全部”标签对应的tableView，当我们点击任意其他一个标签的时候，播放器的代理就会变成该标签对应的tableView，然后等我们回到“全部”标签的时候，是不会调用上面方法的，所以这个时候播放器的代理其实还是我们上次点击的标签所对应的tableView。所以我们就可以理解为什么执行cell的delegate的时候dict的值是正常的，而到执行播放器代理的时候dict的值就变为了nil了。</p>
+<p>为什么会出现这种情况呢，有些人可能会说了：我平时这么写也没发现有问题啊。这就是我们这个案例特殊的一点，因为我们的播放器是通过单例来创建的，也就是说全局只会存在着一个实例，那么他的代理也应该是只对应一个的，以最后一个设置的为准，如果在上面的方法中我们的播放器通过[[DFPlayer alloc] init]来创建的话，那就没有问题了</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>遇到问题很兴奋，解决问题更兴奋。</p>
+<p>首先遇到 bug 不要慌，是时候展现自己真正的技术了（简单的排查思路）</p>
+<ul>
+<li>解决问题一定要思路清晰，先根据 bug 现象判断出问题的大体可能，然后验证你的假想（我的项目播放是利用代理来回传进行播放的，所以大致定位到 delegate 出现相关问题）</li>
+<li>然后用自己的经验和掌握的技能（断点、排除法、逐步分析法等等）找到出现问题的具体代码行（一顿操作操作排查到 tableView 中 cell 的代理内数据dic值正常，播放器代理中数据dic值为空，导致无法播放）</li>
+<li>最后分析导致问题的可能，逐步更正（这里是有必要联系场景分析的）</li>
+</ul>
+<p>默认选中的是全部标签，直接点击其余任意一个标签，然后再切换回到全部标签出现问题，综上</p>
+<ul>
+<li>你可能就会想到，标签切换回来的时候代理失效了（想的不错，当然需要一些时间）</li>
+<li>思考代理为什么会失效？（找到关键了，让代理不失效就ok了）</li>
+<li>思考怎么让代理不失效？（又找到关键了，发现在标签切换的时候代理指向别处了，结合代理一对一的特性）</li>
+<li>思考怎么将代理重新指向当前控制器（哎呀，又想到关键了，在播放事件中重新改变代理的指向而不是之前的在初始化时指向代理）</li>
+<li>问题解决，完美</li>
+</ul>
+<p>以此篇记录关于 delegate（设置单例的代理）引发的 bug</p>
+]]></content>
+      
+        <categories>
+            
+            <category> iOS </category>
+            
+        </categories>
+        
+        
+        <tags>
+            
+            <tag> Objective-C </tag>
+            
+        </tags>
+        
+    </entry>
+    
+    <entry>
       <title><![CDATA[UITableView的优化进阶篇]]></title>
       <url>/2018/02/16/UITableView%E7%9A%84%E4%BC%98%E5%8C%96%E8%BF%9B%E9%98%B6%E7%AF%87/</url>
       <content type="html"><![CDATA[<p>UITableView是iOS中最常用的控件之一，毫不夸张的说基本每个app的都会用到UITableView，简单的使用可能不会有什么问题，但是利用UITableView进行复杂的布局（比如朋友圈的实现），就可能会出现一些性能问题，例如：滑动时卡顿，cell加载太慢等。</p>
@@ -646,6 +958,8 @@
             
             <category> 原理 </category>
             
+            <category> Runtime </category>
+            
         </categories>
         
         
@@ -702,6 +1016,8 @@
         <categories>
             
             <category> 原理 </category>
+            
+            <category> Runtime </category>
             
         </categories>
         
@@ -778,6 +1094,8 @@
         <categories>
             
             <category> 原理 </category>
+            
+            <category> Runtime </category>
             
         </categories>
         

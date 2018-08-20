@@ -4,7 +4,7 @@ date: 2017-02-14 11:20:28
 
 description: 之前有学习过Runtime相关知识，但是都是比较零散的积累，有了自己的博客，那就是时候系统的整理学习Runtime的相关知识了。
 
-categories: 原理
+categories: [原理,Runtime]
 tags: [Objective-C,Runtime]
 ---
 

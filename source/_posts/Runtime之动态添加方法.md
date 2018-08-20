@@ -2,7 +2,7 @@
 title: Runtime之动态添加方法
 date: 2017-2-21 18:13:03
 description: 动态添加的方法的作用就是去处理未实现的实例方法或者是类方法，它的调用时刻:只要我们调用了一个不存在的方法时，它就会动态方法解析，接下来就会进入消息转发流程，这此过程中我们可以拦截然后动态的添加方法，防止程序崩溃。
-categories: 原理
+categories: [原理,Runtime]
 tags: [Objective-C,Runtime]
 toc: false 
 ---
