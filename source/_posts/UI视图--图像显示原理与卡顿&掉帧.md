@@ -5,93 +5,54 @@ description: 图像显示原理与卡顿&掉帧
 categories: UI视图
 tags: [Objective-C]
 ---
-本文以删除view上的所有子视图为例，重点讲的是NSSet和NSArray的makeObjectsPerformSelector方法和enumerator方法
-## removeFromSuperview方法
 
-首先来看看常用的removeFromSuperview方法，下面是苹果官方定义：
+## 图像显示原理
 
-* Unlinks the receiver from its superview and its window,
-and removes it from the responder chain.
+![](img/图像显示原理.png)
 
-
-* 译： 把接收者（当前view）从它的父视图移除，并删除它的响应链。 
-
-
-调用removeFromSuperview方法会将当前视图从其父视图移除。（注意：只是将自己从俯视图移除，以前总是误以为将自己所有自视图从俯视图移除）所以用for...in...的方法，取到每一个subview，让他们执行removeFromSuperView就可以达到效果
-
-```
-for (UIView *view in [self.view subviews]) {
-
-        [view removeFromSuperview];
-    }
-```
+1. CPU和GPU两个硬件是通过总线链接起来的
+2. 在CPU中输出的结果是位图，经由总线在合适的时机上传给GPU
+3. GPU拿到位图之后，会做相应位图的图层渲染，包括文理的合成
+4. 之后会把结果放到帧缓冲区（Frame Buffer）当中
+5. 由视频控制器根据VSync信号在指定时间之前去提取在帧缓存区当中的显示内容，最终显示到手机屏幕上
 
 
+## UIView的显示过程
 
- 注意：
- 1. 永远不要在你的view的drawRect方法中调用removeFromSuperview；
- 2. removeFromSuperview的实质并不是将这个视图从内存中移除,而是将一个视图从他的父视图上删除。计算机删除的本质是，标记删除，当你删除一个东西的时候，系统只是将这块内存做了一个标记，表示目前无人使用，但是之前视图的内存地址存在。所以如果想让视图不存在，需要在移除之后置为nil。
+![](img/UIView的显示过程.png)
 
-## makeObjectsPerformSelector
+1. 当创建一个UIView控件之后，显示部分是由 [CALayer](https://xiaopengmonsters.github.io/2016/12/18/CAlayer/) 来负责的
+2. CALayer当中有一个contents属性，就是我们最终要绘制到屏幕上的位图
+3. 比如说我们创建的是一个UILable，contents里面最终放置的结果就是关于hello word的文字位图
+4. 然后系统会在合适的时机回调一个drawRect：方法，在此基础上可以绘制一些自定义想要绘制的内容
+5. 绘制好的位图，最终会由Core Animation框架提交给GPU部分的OpenGL（ES）渲染管线进行最终的位图的渲染，包括文理的合成，然后显示到屏幕上面
 
-```
-- (void)makeObjectsPerformSelector:(SEL)aSelector;  
-- (void)makeObjectsPerformSelector:(SEL)aSelector withObject:(id)argument; 
-```
-介绍：让数组中的每个元素 都调用 aSelector  并把 withObject 后边的 argument 对象做为参数传给方法aSelector
 
-一行搞定删除子视图
+## UI卡顿&掉帧原因
 
-```
-[self.view.sublayers makeObjectsPerformSelector:@selector(removeFromSuperview)];
-```
+![](img/UI卡顿&掉帧原因.png)
 
-带参数方法的使用：如果一个数组arry中存储了一组有hidden属性的对象（假设为view），需要将数组里所有对象的hide全部赋值为真，就可以这么写：
 
-```
-[arry makeObjectsPerformSelector:@selector(setHidden:) withObject:@YES];  
-```
-这么写就相当于arry数组里面的每一个对象都调用了setHidden方法，并且参数为YES，不用再遍历，一行代码搞定，是不是很方便。
+一般60fps为流畅：每一秒钟会有60帧的画面更新
 
-但是若想设置为NO的话，则无效（亲测）。
+那么每隔 16.7ms（1/60）就要产生一帧画面，那么在这 16.7 毫秒之内，需要 CPU 和 GPU 共同完成产生一帧数据
 
-```
-[arry makeObjectsPerformSelector:@selector(setHidden:) withObject:@NO];  
-```
-这是因为YES和NO都为BOOL类型，设置为YES时，传递的为非0的指针，所以会设置 view.hidden = YES，但若设置为NO时，传递的仍为非0的指针，所以执行的结果仍是 view.hidden = YES。具体可看[这里](https://www.cnblogs.com/Apologize/p/5383652.html)。
+比如 CPU 花费一定的时间做文本的布局，UI计算，包括一些视图的绘制，以及图片解码，然后把最终产生的位图提交给 GPU，再由 GPU 进行相应的图层的合成，文理渲染，然后准备好下一帧画面，再下一帧 VSync 信号到来的时候就可以显示画面
 
-但是可以用nil达到参数为NO的效果
+那假如说 CPU 在做文本布局，UI计算，视图绘制，以及图片解码等工作时长太长的话 ，那么留给 GPU 的时间就非常少，那 GPU 要想把图层的合成，文理渲染全部准备完毕，可能就要总时间超过了 16.7ms，那这样的话在下一帧 VSync 的信号到来的时候，我们没有准备好这一帧当下的画面，那就由此产生了掉帧，我们看到的效果就是滑动卡顿
 
-```
-[arry makeObjectsPerformSelector:@selector(setHidden:) withObject:nil];  
-```
-## enumerator ##
+总之，就是在规定的 16.7ms 之内，在下一帧 VSync 信号到来之前，CPU 和 GPU 并没有共同完成下一帧画面的合成，于是就会导致卡顿或者说掉帧
 
-```
-- (void)enumerateObjectsUsingBlock:block;
-```
-这个方法也是遍历数组，block里面的参数包括obj（运行的对象）、idx（下标）、stop（是否继续遍历的标志），*stop可以控制遍历何时停止，在需要停止时令*stop = YES即可（不要忘记前面的**），应该说，这个能满足基本所有的遍历需求了，有下标，有运行的对象，还有是否继续遍历的标志。
 
-```
-NSArray *xpArray = @[@"A", @"B", @"C", @"D", @"E"];
-    
-    [xpArray enumerateObjectsUsingBlock:^(id  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
-        
-        NSLog(@"%@", obj);
-        
-        if ([obj isEqualToString:@"C"]) {
-            
-            *stop = YES;
-        }
-    }];
-```
-不过反向遍历呢？苹果提供了另外一个方法：
+#### 滑动优化方案
 
-```
-[xpArray enumerateObjectsWithOptions:NSEnumerationReverse usingBlock:^(id obj, NSUInteger idx, BOOLBOOL *stop) {  
-    NSLog(@"idx=%d, id=%@", idx, obj);  
-}]; 
-```
-这个enumerateObjectsWithOptions:usingBlock:方法比前面那个方法多了一个枚举类型的参数NSEnumerationReverse，这个参数指定了遍历的顺序。
+CPU
 
-注意：这里要补充一点，这个方法是可以修改块签名，当我们已经明确集合中的元素类型时，可以把默认的签名id类型修改成已知类型，比如常见的NSString，这样既可以节省系统资源开销，也可以防止误向对象发送不存在的方法是引起的崩溃。
+* 对象创建、调整、销毁（可以放在子线程）
+* 预排版（布局计算，文本计算）
+* 预渲染（文本等异步绘制，图片编码等）
+
+GPU
+
+* 纹理渲染（避免离屏渲染、CPU异步绘制机制减轻GPU压力）
+* 视图混合（减轻层级复杂度）

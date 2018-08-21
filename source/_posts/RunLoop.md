@@ -4,7 +4,7 @@ date: 2017-4-20 15:21:18
 
 description: RunLoop 是 iOS 开发中非常基础的一个概念，在开发中你自己可能很少用到，但它在你的项目中却无处不在，了解RunLoop对iOS编程有百利而无一害。
 
-categories: [原理]
+categories: [原理, RunLoop]
 tags: [Objective-C]
 toc: ture 
 ---
