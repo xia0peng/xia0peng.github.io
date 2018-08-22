@@ -8,7 +8,7 @@ tags: [Objective-C]
 
 ## 图像显示原理
 
-![](img/图像显示原理.png)
+![](/img/图像显示原理.png)
 
 1. CPU和GPU两个硬件是通过总线链接起来的
 2. 在CPU中输出的结果是位图，经由总线在合适的时机上传给GPU
@@ -19,7 +19,7 @@ tags: [Objective-C]
 
 ## UIView的显示过程
 
-![](img/UIView的显示过程.png)
+![](/img/UIView的显示过程.png)
 
 1. 当创建一个UIView控件之后，显示部分是由 [CALayer](https://xiaopengmonsters.github.io/2016/12/18/CAlayer/) 来负责的
 2. CALayer当中有一个contents属性，就是我们最终要绘制到屏幕上的位图
@@ -30,7 +30,7 @@ tags: [Objective-C]
 
 ## UI卡顿&掉帧原因
 
-![](img/UI卡顿&掉帧原因.png)
+![](/img/UI卡顿&掉帧原因.png)
 
 
 一般60fps为流畅：每一秒钟会有60帧的画面更新

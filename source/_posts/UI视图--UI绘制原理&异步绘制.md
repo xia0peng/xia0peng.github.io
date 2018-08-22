@@ -9,7 +9,7 @@ tags: [Objective-C]
 
 ## UI绘制原理的过程
 
-![](img/UI绘制原理的过程.png)
+![](/img/UI绘制原理的过程.png)
 
 当调用 [UIView setNeedsDisplay] 方法时，系统会立即调用它所对应 layer 的同名方法 setNeedsDisplay，之后相当于是 layer 上打了一个脏标记，在当前 runloop 即将要结束的时候，会调用 [CALayer display] 方法，然后进入到视图真正的绘制过程当中
 
@@ -33,7 +33,7 @@ tags: [Objective-C]
 
 #### 异步绘制的机制和流程
 
-![](img/异步绘制的机制和流程.png)
+![](/img/异步绘制的机制和流程.png)
 
 在调用 setNeedsDisplay 方法之后，在当前 runloop 快要结束的时候，由系统调用视图所对应 CALayer 的 display 方法，然后如果代理实现了 displayLayer：函数时，会调用代理的 displayLayer：函数方法，然后会通过子线程的切换，在子线程中做位图的绘制 ，此时主线程可以做别的事
 
