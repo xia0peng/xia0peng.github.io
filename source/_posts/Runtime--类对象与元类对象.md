@@ -4,7 +4,7 @@ date: 2018-05-13 01:01:18
 
 description: 深入理解 对象、类对象、元类对象
 
-categories: [iOS,Runtime]
+categories: Runtime
 tags: [Objective-C]
 ---
 
@@ -16,7 +16,7 @@ tags: [Objective-C]
 
 #### 通过一副经典图来了解一下
 
-![](img/类对象与元类对象.png)
+![](/img/类对象与元类对象.png)
 
 **实例和类对象之间的关系**
 
@@ -58,7 +58,7 @@ tags: [Objective-C]
 * 所以在遍历类方法的过程当中和遍历实例方法的过程当中有一个区别，区别就在根元类对象 superclass 指针的指向
 
 
-## 题
+## 思考
 
 
 ```

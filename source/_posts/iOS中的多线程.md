@@ -4,7 +4,7 @@ date: 2017-11-18 11:11:18
 
 description: 在 iOS 中其实目前有 4 套多线程方案
 
-categories: [原理]
+categories: [iOS]
 tags: [Objective-C]
 toc: true 
 ---

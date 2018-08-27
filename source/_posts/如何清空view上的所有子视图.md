@@ -2,7 +2,7 @@
 title: 如何清空view上的所有子视图
 date: 2016-12-03 17:22:09
 description: 本文以删除view上的所有子视图为例，重点讲的是NSSet和NSArray的makeObjectsPerformSelector方法和enumerator方法
-categories: iOS
+categories: 问题记录
 tags: [Objective-C]
 ---
 本文以删除view上的所有子视图为例，重点讲的是NSSet和NSArray的makeObjectsPerformSelector方法和enumerator方法

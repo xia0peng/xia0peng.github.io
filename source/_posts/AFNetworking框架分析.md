@@ -3,7 +3,7 @@ title: AFNetworking框架分析
 date: 2017-3-16 13:23:28
 
 description: 想必AFNetworking网络请求框架，每个iOS开发攻城狮都晓得，也会使用，但是其内部构造及原理对小白来说还是有些生疏，这篇文章我们就来探索AFNetworking的神秘。
-categories: 原理
+categories: 三方框架
 tags: [Objective-C]
 toc: false 
 ---

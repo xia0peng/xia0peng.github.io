@@ -4,7 +4,7 @@ date: 2018-2-16 17:23:33
 
 description: 优化方案：异步渲染内容到图片和按需加载内容。
 
-categories: [性能]
+categories: [性能优化]
 tags: [Objective-C]
 toc: false 
 ---
