@@ -5,6 +5,11 @@ description: 离屏渲染
 categories: UI视图
 tags: [Objective-C]
 ---
+***
+[UI视图--图像显示原理与卡顿&掉帧](https://xiaopengmonsters.github.io/2018/04/05/UI%E8%A7%86%E5%9B%BE--%E5%9B%BE%E5%83%8F%E6%98%BE%E7%A4%BA%E5%8E%9F%E7%90%86%E4%B8%8E%E5%8D%A1%E9%A1%BF&%E6%8E%89%E5%B8%A7/)
+[UI视图--UI绘制原理&异步绘制](https://xiaopengmonsters.github.io/2018/04/13/UI%E8%A7%86%E5%9B%BE--UI%E7%BB%98%E5%88%B6%E5%8E%9F%E7%90%86&%E5%BC%82%E6%AD%A5%E7%BB%98%E5%88%B6/)
+[UI视图--离屏渲染](https://xiaopengmonsters.github.io/2018/04/16/UI%E8%A7%86%E5%9B%BE--%E7%A6%BB%E5%B1%8F%E6%B8%B2%E6%9F%93/)
+***
 
 #### 离屏渲染
 

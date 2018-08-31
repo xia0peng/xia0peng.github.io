@@ -8,6 +8,10 @@ categories: Block
 tags: [Objective-C]
 ---
 
+*******
+[Block--Block 的循环引用](https://xiaopengmonsters.github.io/2018/06/05/Block--Block%20%E7%9A%84%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/)
+******
+
 ## 先思考两个问题
 
 **题1：**

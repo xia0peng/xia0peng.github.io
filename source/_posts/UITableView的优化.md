@@ -9,6 +9,12 @@ tags: [Objective-C]
 toc: false 
 ---
 
+***
+[UITableView的优化](https://xiaopengmonsters.github.io/2017/12/26/UITableView%E7%9A%84%E4%BC%98%E5%8C%96/)
+[UITableView的优化进阶篇](https://xiaopengmonsters.github.io/2018/02/16/UITableView%E7%9A%84%E4%BC%98%E5%8C%96%E8%BF%9B%E9%98%B6%E7%AF%87/)
+[APP的优化](https://xiaopengmonsters.github.io/2018/01/08/APP%E7%9A%84%E4%BC%98%E5%8C%96/)
+***
+
 UITableView是iOS中最常用的控件之一，毫不夸张的说基本每个app的都会用到UITableView，简单的使用可能不会有什么问题，但是利用UITableView进行复杂的布局（比如朋友圈的实现），就可能会出现一些性能问题，例如：滑动时卡顿，cell加载太慢等。
 
 那么优化就势在必得。。。

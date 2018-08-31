@@ -7,6 +7,14 @@ tags: [Objective-C,Runtime]
 toc: false 
 ---
 
+***
+[Runtime--Runtime的数据结构](https://xiaopengmonsters.github.io/2018/05/03/Runtime--Runtime%E7%9A%84%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/)
+[Runtime--类对象与元类对象](https://xiaopengmonsters.github.io/2018/05/13/Runtime--%E7%B1%BB%E5%AF%B9%E8%B1%A1%E4%B8%8E%E5%85%83%E7%B1%BB%E5%AF%B9%E8%B1%A1/)
+[Runtime和消息转发](https://xiaopengmonsters.github.io/2017/02/14/Runtime/)
+[Runtime之动态添加属性](https://xiaopengmonsters.github.io/2017/02/20/Runtime%E4%B9%8B%E5%8A%A8%E6%80%81%E6%B7%BB%E5%8A%A0%E5%B1%9E%E6%80%A7/)
+[Runtime之动态添加方法](https://xiaopengmonsters.github.io/2017/02/21/Runtime%E4%B9%8B%E5%8A%A8%E6%80%81%E6%B7%BB%E5%8A%A0%E6%96%B9%E6%B3%95/)
+***
+
 * 动态添加的方法的作用就是去处理未实现的实例方法或者是类方法，它的调用时刻: 只要我们调用了一个不存在的方法时，它就会动态方法解析，接下来就会进入消息转发流程，这此过程中我们可以拦截然后动态的添加方法，防止程序崩溃。
 
 * 如果一个类方法非常多，加载类到内存的时候也比较耗费资源，需要给每个方法生成映射表，可以使用动态给某个类添加方法解决。
