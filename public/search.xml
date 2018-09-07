@@ -6,7 +6,7 @@
       <title><![CDATA[内存管理--内存管理方案]]></title>
       <url>/2018/06/08/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E6%96%B9%E6%A1%88/</url>
       <content type="html"><![CDATA[<hr>
-<p><a href="https://xiaopengmonsters.github.io/2018/06/03/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">内存管理–内存管理方案</a><br><a href="https://xiaopengmonsters.github.io/2018/06/03/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">内存管理–循环引用</a><br><a href="https://xiaopengmonsters.github.io/2018/06/05/Block--Block%20%E7%9A%84%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">Block–Block 的循环引用</a></p>
+<p><a href="https://xiaopengmonsters.github.io/2018/06/08/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E6%96%B9%E6%A1%88/" target="_blank" rel="noopener">内存管理–内存管理方案</a><br><a href="https://xiaopengmonsters.github.io/2018/06/03/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">内存管理–循环引用</a><br><a href="https://xiaopengmonsters.github.io/2018/06/05/Block--Block%20%E7%9A%84%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">Block–Block 的循环引用</a></p>
 <hr>
 <h2 id="内存布局"><a href="#内存布局" class="headerlink" title="内存布局"></a>内存布局</h2><p> <img src="/img/内存布局.png" alt=""></p>
 <p>地址的表示是由下到上是低地址到高地址，比如说程序最终加载到内存被分成三段，分别对应未初始化区，已初始化区还有代码段，我们写的程序所有的代码一些数据段都在 .text 内存当中，声明的一些静态变量，全局变量，前提是已初始化的，都会放到已初始化数据区，对于未初始化的一些静态或者全局变量会放到未初始化数据区</p>
@@ -150,7 +150,7 @@
       <title><![CDATA[内存管理--循环引用]]></title>
       <url>/2018/06/03/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/</url>
       <content type="html"><![CDATA[<hr>
-<p><a href="https://xiaopengmonsters.github.io/2018/06/03/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">内存管理–循环引用</a><br><a href="https://xiaopengmonsters.github.io/2018/06/05/Block--Block%20%E7%9A%84%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">Block–Block 的循环引用</a></p>
+<p><a href="https://xiaopengmonsters.github.io/2018/06/08/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E6%96%B9%E6%A1%88/" target="_blank" rel="noopener">内存管理–内存管理方案</a><br><a href="https://xiaopengmonsters.github.io/2018/06/03/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">内存管理–循环引用</a><br><a href="https://xiaopengmonsters.github.io/2018/06/05/Block--Block%20%E7%9A%84%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">Block–Block 的循环引用</a></p>
 <hr>
 <h2 id="循环引用介绍"><a href="#循环引用介绍" class="headerlink" title="循环引用介绍"></a>循环引用介绍</h2><p>循环引用主要可以分为三种类型</p>
 <ul>
