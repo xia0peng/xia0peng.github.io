@@ -4,7 +4,7 @@ date: 2018-3-10 17:23:33
 
 description: 学习 casa 关于网层的架构设计思想，已应用于公司重构项目中
 
-categories: [iOS]
+categories: [iOS,三方框架]
 tags: [Objective-C]
 toc: false 
 ---

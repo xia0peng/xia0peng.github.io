@@ -1,8 +1,8 @@
 ---
-title: Block--Block 的循环引用
-date: 2018-06-05 01:01:18
+title: Block(一)--Block 本质和截获变量
+date: 2018-07-16 01:01:18
 
-description: 循环引用 Block 篇
+description: 更深的理解 Block
 
 categories: Block
 tags: [Objective-C]

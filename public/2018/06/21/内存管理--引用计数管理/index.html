@@ -1,0 +1,85 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description"><title>内存管理(三)--引用计数管理 | 怪兽</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/7.0.0/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/1.0.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/1.0.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.7.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/3.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><!-- 加载gitment的css和js文件 -->
+<link rel="stylesheet" href="/css/default.css">
+<script src="/js/gitment.browser.js"></script><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">内存管理(三)--引用计数管理</h1><a id="logo" href="/.">怪兽</a><p class="description">技术沉淀，追求创新。</p></div><div id="nav-menu"><a class="current" href="/."><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about"><i class="fa fa-user"> 关于</i></a></div></div><div class="pure-g" id="layout"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">内存管理(三)--引用计数管理</h1><div class="post-meta">Jun 21, 2018<span> | </span><span class="category"><a href="/categories/内存管理/">内存管理</a></span><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> 阅读</span></span></div><div class="post-content"><hr>
+<p><a href="https://xiaopengmonsters.github.io/2018/06/08/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E6%96%B9%E6%A1%88/" target="_blank" rel="noopener">内存管理–内存管理方案</a><br><a href="https://xiaopengmonsters.github.io/2018/06/03/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">内存管理–循环引用</a><br><a href="https://xiaopengmonsters.github.io/2018/06/05/Block--Block%20%E7%9A%84%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">Block–Block 的循环引用</a></p>
+<hr>
+<h2 id="内存布局"><a href="#内存布局" class="headerlink" title="内存布局"></a>内存布局</h2><p> <img src="/img/内存布局.png" alt=""></p>
+<p>地址的表示是由下到上是低地址到高地址，比如说程序最终加载到内存被分成三段，分别对应未初始化区，已初始化区还有代码段，我们写的程序所有的代码一些数据段都在 .text 内存当中，声明的一些静态变量，全局变量，前提是已初始化的，都会放到已初始化数据区，对于未初始化的一些静态或者全局变量会放到未初始化数据区</p>
+<p>在 iOS 中定义的一些方法或者说函数都是在栈上进行工作的，栈是从高地址到低地址进行扩展，所以说栈是向下扩展或者说向下增长，在 iOS 开发过程中，创建的对象或者 block 经过 copy 之后，都会被转移到堆上面去，堆是向上增长的</p>
+<p><strong>不同内存段分别代表的详细含义</strong></p>
+<ul>
+<li>stack：代表栈区，栈区一般都是方法调用</li>
+<li>heap：对应的是堆区，通过 alloc 分配的一些对象实际上都是在堆上面提现的</li>
+<li>bss：就是未初始化的全局变量以及一些未初始化的静态变量</li>
+<li>data：代表的是已初始化的全局变量</li>
+<li>text：程序的代码段，程序的代码加载到内存都是放在 text 段</li>
+</ul>
+<h2 id="内存管理方案"><a href="#内存管理方案" class="headerlink" title="内存管理方案"></a>内存管理方案</h2><ul>
+<li><p>TaggedPointer</p>
+</li>
+<li><p>NONPOINTER_ISA</p>
+</li>
+<li><p>散列表</p>
+</li>
+</ul>
+<p>系统针对不同场景下提出的内存管理方案:</p>
+<ol>
+<li><p>对一些小对象，如 NSNumber 等，采用的是 TaggedPointer 内存管理方案（把指针指向的内容直接放在了指针变量的内存地址中）<a href="https://www.jianshu.com/p/e354f9137ba8" target="_blank" rel="noopener">戳这里</a></p>
+</li>
+<li><p>对于64位架构下的 iOS 应用程序采用的是 NONPOINTER_ISA 内存管理方案<br>NONPOINTER _ISA 内存管理方案的涵义：实际上在64位架构下 isa 这个指针本身是占64个 比特位的，那么实际上有32位或者说40位就够用了，剩余这些位数的比特位实际上是浪费的，苹果为了提高内存的利用率，在 isa 当中剩余的这些比特位当中，存储了一些关于内存管理当面的相关数据内容，所以说这个叫非指针型的 isa</p>
+</li>
+<li><p>散列表，散列表是一个很复杂的结构，其中包括了引用计数表和弱引用表  </p>
+</li>
+</ol>
+<h3 id="非指针型的-isa-内存管理方案-NONPOINTER-ISA"><a href="#非指针型的-isa-内存管理方案-NONPOINTER-ISA" class="headerlink" title="非指针型的 isa 内存管理方案 NONPOINTER_ISA"></a>非指针型的 isa 内存管理方案 NONPOINTER_ISA</h3><p> <img src="/img/NONPOINTER_ISA1.png" alt=""></p>
+<p> <img src="/img/NONPOINTER_ISA2.png" alt=""></p>
+<p>在 arm64 架构下，isa 指针一共有 64 个bit位，这 64 个bit位都存储了哪些内容：</p>
+<ul>
+<li><strong>第 0 位</strong> 是一个叫 indexed 的标志位，如果这个位置是 0 ，代表的是我们使用的 isa 指针只是一个纯的 isa 指针，它里面的内容就直接代表当前对象的类对象的地址，如果这个标志位是 1 的话就代表这个 isa 里面存储的不止是它的类对象的地址，而且还有内存管理方面的数据，那就是我们这里面要讲到的非指针型的 isa </li>
+<li><strong>第 1 位</strong> has_assoc ，是表示当前对象是否有关联对象，0 代表没有，1代表有</li>
+<li><strong>第 2 位</strong> has_cxx_dtor ,这个函数或者说这个变量标志表示的是当前对象是否有使用 C++ 相关的代码，那么在 ARC 当中也可以这个表示位来表示有些对象是通过 ARC 来进行内存管理的</li>
+<li><strong>3-35 位</strong> 表示的是当前对象的类对象的指针地址（一共有33位01的bit来表示当前对象的类对象的指针地址，我们需要把这个这个位置全部拿出来再去计算它对应的类对象的实际的指针地址）</li>
+<li><strong>36-41 位</strong> 这 6 位代表的是 magic 字段（不讲解）</li>
+<li><strong>42 位</strong> 是 weakly_referenced 就标识了这个对象是否有相应的弱引用指针</li>
+<li><strong>43 位</strong> deallocating 标志当前对象是否正在进行 dealloc 操作</li>
+<li><strong>44 位</strong> has_sidetable_rc 这个0是指当前 isa 指针当中如果所存储的引用计数已经达到了上限的话，那么需要外挂一个 sidetable 数据结构去存储相关的引用计数内容，那就是接下里要讲解的散列表</li>
+<li><strong>45-63 位</strong> 代表的是 extra_rc 也就是额外的引用计数，当引用计数在很小的值范围之内的话就会存到 isa 指针当中，而不是有单独的引用计数表去存储它</li>
+</ul>
+<p>通过对 NONPOINTER_ ISA 的 64 个bit位的分析，就应该清楚关于内存管理不仅仅是散列表，其实还有 isa 部分的 extra_rc 来存储相关的引用计数值</p>
+<h3 id="散列表内存管理方案"><a href="#散列表内存管理方案" class="headerlink" title="散列表内存管理方案"></a>散列表内存管理方案</h3><p> <img src="/img/散列表内存管理方案.png" alt=""></p>
+<p>散列表方案在源码中是通过 Side Tables() 结构来实现的</p>
+<p>Side Tables() 结构是什么？</p>
+<p>在他的结构下面挂了很多 Side Table 数据结构，这些数据结构在不同的架构上面是有不同个数的，比如在非嵌入式系统当中，Side Table 这个表一共有 64 个，在这里解释一下，Side Tables() 实际上是一个哈希表，可以通过一个对象指针来具体找到它对应的引用计数表或者说弱引用表在哪一张具体的 Side Table 当中</p>
+<p><strong>Side Table结构</strong></p>
+<p>实际上 Side Table 结构就包含了以下三个元素</p>
+<ul>
+<li>自旋锁</li>
+<li>引用计数表</li>
+<li>弱引用表</li>
+</ul>
+<p><strong>问题：为什么不是一个 SideTable，而是有多个 SideTable 共同组成 SideTables？</strong></p>
+<p><img src="/img/为什么不是一个SideTable.png" alt=""></p>
+<p>假如说只有一张 SideTable ，那么在内存中分配的所有对象的引用计数或者说弱引用存储都放到一张大表当中，这个时候如果说要操作某一个对象的引用计数值进行修改，比如说加一减一的操作，由于所有的对象可能是在不同的线程当中去分配创建的，包括调用他们的 retain，release等方法也可能是在不同线程当中操作的，那么这个时候再对这张表进行操作的时候，需要进行加锁处理才能保证对数据的访问安全，在这个过程当中就存在了效率问题，如果现在已经有一个对象在操作这张表，那么下一个对象就要等前一个对象操作完后把锁释放之后它才能操作这张表</p>
+<p><strong>系统为了解决效率问题引用了分离锁的技术方案</strong></p>
+<p><img src="/img/分离锁.png" alt=""></p>
+<p>可以把内存对象所对应的引用技术表可以分拆成多个部分，比如说把它分拆成8个，分拆成8个需要对这8个表分别加锁</p>
+<p>比如说某一个对象A在第一张表里面，另一个对象B在另一张表中，那么当A和B同时进行引用计数操作的时候可以并发操作，但是如果按照一张表的情况下他们就需要顺序操作</p>
+<p><strong>怎样实现快速分流？</strong></p>
+<p>快速分流指的是通过一个对象的指针如何快速的定位到它属于哪张 side Table 表？</p>
+<p><img src="/img/怎样实现快速分流.png" alt=""></p>
+<p>side Tables 的本质是一张哈希表，这张哈希表当中可能有64张具体的 side Table ，然后存储不同对象的引用计数表和弱引用表</p>
+<p><strong>哈希表的概念这里简单讲解一下：</strong></p>
+<p>看这幅图，左侧是一个对象，这个对象指针可以作为一个 Key ，经过哈希函数的一个运算然后会计算出一个值来决定出这个对象它所对应的 side Table 是哪张或者说在数组的索引是多少</p>
+<p><img src="/img/哈希查找.png" alt=""></p>
+<p><strong>哈希查找的过程：</strong></p>
+<p>比如说给定值是对象的内存地址，目标值是 side Tables 结构当中的下标索引</p>
+<p>现在给一个对象的内存指针地址，通过一个哈希函数把指针作为哈希函数的参数，然后经过函数的运算就可以得出一个数组的下标索引值<br>哈希函数对于 side Tables 具体的情况，实际上表达式就是这样的，也就是说通过对象的内存地址来和 side Tables 数组的个数来进行取余运算，这样就可以计算出一个对象指针它所对应的引用计数表或者弱引用表在哪一张具体的 side Table 当中</p>
+<p><strong>为什么通过哈希查找？</strong></p>
+<p>是为了提高查找效率，比如说存储的时候是通过这个哈希函数进行存储的，比如说这个数组个数是8，内存地址假设是1的话，那么取余就是1，就把这个对象存储到数组对应第一个位置，当我们去访问这个对象的时候，也不需要根据这个数组进行遍历来比较指针值，而是也通过这个函数进行一次运算去取值，这个过程不涉及遍历的操作，自然查找效率是比较高的，内存地址的分布是均匀分布，可以称这个哈希函数为一个均匀散列函数</p>
+</div><iframe src="/donate/?AliPayQR=/img/AliPayQR.png&amp;WeChatQR=/img/WeChatQR.png&amp;GitHub=null&amp;BTCQR=null&amp;BTCKEY=null&amp;PayPal=null" style="overflow-x:hidden; overflow-y:hidden; border:0xp none #fff; min-height:240px; width:100%;" frameborder="0" scrolling="no"></iframe><div class="tags"><a href="/tag/Objective-C/">Objective-C</a></div><div class="post-nav"><a class="pre" href="/2018/06/28/内存管理--弱引用管理/">内存管理(四)--弱引用管理</a><a class="next" href="/2018/06/18/内存管理--有关散列表实现的内存管理方法的数据结构/">内存管理(二)--有关散列表实现的内存管理方法的数据结构</a></div></div></div></div><div class="pure-u-1-4 hidden_mid_and_down"><div id="sidebar"><div class="widget"><div class="search-form"><input id="local-search-input" placeholder="Search" type="text" name="q" results="0"/><div id="local-search-result"></div></div></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/Block/">Block</a><span class="category-list-count">4</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/RunLoop/">RunLoop</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Runtime/">Runtime</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/UI视图/">UI视图</a><span class="category-list-count">3</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/iOS/">iOS</a><span class="category-list-count">8</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/iOS/三方框架/">三方框架</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/内存管理/">内存管理</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/性能优化/">性能优化</a><span class="category-list-count">3</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/问题记录/">问题记录</a><span class="category-list-count">3</span></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tag/Objective-C/" style="font-size: 15px;">Objective-C</a> <a href="/tag/Runtime/" style="font-size: 15px;">Runtime</a> <a href="/tag/Swift/" style="font-size: 15px;">Swift</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最近文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2018/08/06/Block--Block 的内存管理/">Block(三)--Block 的内存管理</a></li><li class="post-list-item"><a class="post-list-link" href="/2018/07/21/Block--_ _block 修饰符/">Block(二)--_ _block 修饰符</a></li><li class="post-list-item"><a class="post-list-link" href="/2018/07/16/Block--Block 本质和截获变量/">Block(一)--Block 本质和截获变量</a></li><li class="post-list-item"><a class="post-list-link" href="/2018/07/08/内存管理--自动释放池/">内存管理(五)--自动释放池</a></li><li class="post-list-item"><a class="post-list-link" href="/2018/06/28/内存管理--弱引用管理/">内存管理(四)--弱引用管理</a></li><li class="post-list-item"><a class="post-list-link" href="/2018/06/21/内存管理--引用计数管理/">内存管理(三)--引用计数管理</a></li><li class="post-list-item"><a class="post-list-link" href="/2018/06/18/内存管理--有关散列表实现的内存管理方法的数据结构/">内存管理(二)--有关散列表实现的内存管理方法的数据结构</a></li><li class="post-list-item"><a class="post-list-link" href="/2018/06/13/内存管理--内存管理方案/">内存管理(一)--内存管理方案</a></li><li class="post-list-item"><a class="post-list-link" href="/2018/06/05/Block--Block 的循环引用/">Block(四)--Block 的循环引用</a></li><li class="post-list-item"><a class="post-list-link" href="/2018/06/03/内存管理--循环引用/">内存管理(六)--循环引用</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://www.baidu.com/" title="百度" target="_blank">百度</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">Copyright © 2018 <a href="/." rel="nofollow">怪兽.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho. <span>您是访问本站的第<span id="busuanzi_value_site_uv"></span>位小伙伴</span> <script type="text/javascript">var cnzz_protocol = (("https:" == document.location.protocol) ? " https://" : " http://");document.write(unescape("%3Cspan id='cnzz_stat_icon_1271673961'%3E%3C/span%3E%3Cscript src='" + cnzz_protocol + "s13.cnzz.com/z_stat.php%3Fid%3D1271673961%26show%3Dpic1' type='text/javascript'%3E%3C/script%3E"));</script></a></div></div></div><a class="show" id="rocket" href="#top"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/3.2.5/jquery.fancybox.min.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/fancybox/3.2.5/jquery.fancybox.min.css"><script type="text/javascript" src="/js/search.js?v=0.0.0"></script><script>var search_path = 'search.xml';
+if (search_path.length == 0) {
+   search_path = 'search.xml';
+}
+var path = '/' + search_path;
+searchFunc(path, 'local-search-input', 'local-search-result');
+</script><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>

@@ -1,8 +1,8 @@
 ---
-title: Block--Block 的循环引用
-date: 2018-06-05 01:01:18
+title: Block(二)--_ _block 修饰符
+date: 2018-07-21 01:01:18
 
-description: 循环引用 Block 篇
+description: _ _block 修饰符
 
 categories: Block
 tags: [Objective-C]

@@ -1,8 +1,8 @@
 ---
-title: Block--Block 的循环引用
-date: 2018-06-05 01:01:18
+title: Block(三)--Block 的内存管理
+date: 2018-08-06 01:01:18
 
-description: 循环引用 Block 篇
+description: Block 的内存管理
 
 categories: Block
 tags: [Objective-C]
