@@ -9,6 +9,11 @@ tags: [Objective-C]
 toc: false 
 ---
 
+***
+[iOS应用架构谈：网络层框架的设计](https://xiaopengmonsters.github.io/2018/03/10/iOS%E5%BA%94%E7%94%A8%E6%9E%B6%E6%9E%84%E8%B0%88%EF%BC%9A%E7%BD%91%E7%BB%9C%E5%B1%82%E6%A1%86%E6%9E%B6%E7%9A%84%E8%AE%BE%E8%AE%A1/)
+[iOS应用架构谈：网络层框架的优化](https://xiaopengmonsters.github.io/2018/03/15/iOS%E5%BA%94%E7%94%A8%E6%9E%B6%E6%9E%84%E8%B0%88%EF%BC%9A%E7%BD%91%E7%BB%9C%E5%B1%82%E6%A1%86%E6%9E%B6%E7%9A%84%E4%BC%98%E5%8C%96/)
+[iOS应用架构谈：本地持久化方案](https://xiaopengmonsters.github.io/2018/03/18/iOS%E5%BA%94%E7%94%A8%E6%9E%B6%E6%9E%84%E8%B0%88%EF%BC%9A%E6%9C%AC%E5%9C%B0%E6%8C%81%E4%B9%85%E5%8C%96%E6%96%B9%E6%A1%88%E5%8F%8A%E5%8A%A8%E6%80%81%E9%83%A8%E7%BD%B2/)
+***
 
 1. 根据需求决定持久化方案
 2. 持久层与业务层之间的隔离

@@ -9,8 +9,10 @@ tags: [Objective-C]
 ---
 
 *******
-[内存管理--循环引用](https://xiaopengmonsters.github.io/2018/06/03/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/)
-[Block--Block 的循环引用](https://xiaopengmonsters.github.io/2018/06/05/Block--Block%20%E7%9A%84%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/)
+[Block(一) -- Block 本质和截获变量](https://xiaopengmonsters.github.io/2018/07/16/Block--Block%20%E6%9C%AC%E8%B4%A8%E5%92%8C%E6%88%AA%E8%8E%B7%E5%8F%98%E9%87%8F/)
+[Block(二) -- _ _block 修饰符](https://xiaopengmonsters.github.io/2018/07/21/Block--_%20_block%20%E4%BF%AE%E9%A5%B0%E7%AC%A6/)
+[Block(三) -- Block 的内存管理](https://xiaopengmonsters.github.io/2018/08/06/Block--Block%20%E7%9A%84%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/)
+[Block(四) -- Block 的循环引用](https://xiaopengmonsters.github.io/2018/06/05/Block--Block%20%E7%9A%84%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/)
 ******
 
 ## 先思考两个问题
