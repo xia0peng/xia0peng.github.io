@@ -1,81 +1,101 @@
 <!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description"><title>内存管理(三)--引用计数管理 | 怪兽</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/7.0.0/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/1.0.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/1.0.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.7.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/3.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><!-- 加载gitment的css和js文件 -->
 <link rel="stylesheet" href="/css/default.css">
 <script src="/js/gitment.browser.js"></script><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">内存管理(三)--引用计数管理</h1><a id="logo" href="/.">怪兽</a><p class="description">技术沉淀，追求创新。</p></div><div id="nav-menu"><a class="current" href="/."><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about"><i class="fa fa-user"> 关于</i></a></div></div><div class="pure-g" id="layout"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">内存管理(三)--引用计数管理</h1><div class="post-meta">Jun 21, 2018<span> | </span><span class="category"><a href="/categories/内存管理/">内存管理</a></span><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> 阅读</span></span></div><div class="post-content"><hr>
-<p><a href="https://xiaopengmonsters.github.io/2018/06/08/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E6%96%B9%E6%A1%88/" target="_blank" rel="noopener">内存管理–内存管理方案</a><br><a href="https://xiaopengmonsters.github.io/2018/06/03/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">内存管理–循环引用</a><br><a href="https://xiaopengmonsters.github.io/2018/06/05/Block--Block%20%E7%9A%84%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">Block–Block 的循环引用</a></p>
+<p><a href="https://xiaopengmonsters.github.io/2018/06/13/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E6%96%B9%E6%A1%88/" target="_blank" rel="noopener">内存管理(一) – 内存管理方案</a><br><a href="https://xiaopengmonsters.github.io/2018/06/18/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E6%9C%89%E5%85%B3%E6%95%A3%E5%88%97%E8%A1%A8%E5%AE%9E%E7%8E%B0%E7%9A%84%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E6%96%B9%E6%B3%95%E7%9A%84%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" target="_blank" rel="noopener">内存管理(二) – 有关散列表实现的内存管理方法的数据结构</a><br><a href="https://xiaopengmonsters.github.io/2018/06/21/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BC%95%E7%94%A8%E8%AE%A1%E6%95%B0%E7%AE%A1%E7%90%86/" target="_blank" rel="noopener">内存管理(三) – 引用计数管理</a><br><a href="https://xiaopengmonsters.github.io/2018/06/28/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BC%B1%E5%BC%95%E7%94%A8%E7%AE%A1%E7%90%86/" target="_blank" rel="noopener">内存管理(四) – 弱引用管理</a><br><a href="https://xiaopengmonsters.github.io/2018/07/08/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E8%87%AA%E5%8A%A8%E9%87%8A%E6%94%BE%E6%B1%A0/" target="_blank" rel="noopener">内存管理(五) – 自动释放池</a><br><a href="https://xiaopengmonsters.github.io/2018/06/03/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">内存管理(六) – 循环引用</a><br><a href="https://xiaopengmonsters.github.io/2018/06/05/Block--Block%20%E7%9A%84%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">Block(四) – Block 的循环引用</a></p>
 <hr>
-<h2 id="内存布局"><a href="#内存布局" class="headerlink" title="内存布局"></a>内存布局</h2><p> <img src="/img/内存布局.png" alt=""></p>
-<p>地址的表示是由下到上是低地址到高地址，比如说程序最终加载到内存被分成三段，分别对应未初始化区，已初始化区还有代码段，我们写的程序所有的代码一些数据段都在 .text 内存当中，声明的一些静态变量，全局变量，前提是已初始化的，都会放到已初始化数据区，对于未初始化的一些静态或者全局变量会放到未初始化数据区</p>
-<p>在 iOS 中定义的一些方法或者说函数都是在栈上进行工作的，栈是从高地址到低地址进行扩展，所以说栈是向下扩展或者说向下增长，在 iOS 开发过程中，创建的对象或者 block 经过 copy 之后，都会被转移到堆上面去，堆是向上增长的</p>
-<p><strong>不同内存段分别代表的详细含义</strong></p>
+<h2 id="MRC-amp-ARC"><a href="#MRC-amp-ARC" class="headerlink" title="MRC&amp;ARC"></a>MRC&amp;ARC</h2><h3 id="MRC"><a href="#MRC" class="headerlink" title="MRC"></a>MRC</h3><p> <img src="/img/MRC.png" alt=""></p>
+<p> MRC：是通过手动引用计数来进行对象的内存管理，关于内存管理涉及到这么几个方法</p>
 <ul>
-<li>stack：代表栈区，栈区一般都是方法调用</li>
-<li>heap：对应的是堆区，通过 alloc 分配的一些对象实际上都是在堆上面提现的</li>
-<li>bss：就是未初始化的全局变量以及一些未初始化的静态变量</li>
-<li>data：代表的是已初始化的全局变量</li>
-<li>text：程序的代码段，程序的代码加载到内存都是放在 text 段</li>
+<li>alloc：用来分配一个对象的内存空间</li>
+<li>retain：可以使一个对象的引用计数加一</li>
+<li>release：对一个对象的引用计数进行减一操作</li>
+<li>retainCount：这个函数可以获取当前对象的引用计数值</li>
+<li>autorelease：如果调用了一个对象的 autorelease 方法，那么当前这个对象会在 autorelease pool 结束的时候调用它的 release 操作进行计数减一</li>
+<li>dealloc：在 MRC 中调用 dealloc 的话，需要显示的调用 super dealloc 来释放或者说废弃父类的相关成员变量<br>在 MRC 当中所使用的特有方法，就是标红的这四个方法，在 ARC 当中如果调用这个四个方法，会引起编译报错</li>
 </ul>
-<h2 id="内存管理方案"><a href="#内存管理方案" class="headerlink" title="内存管理方案"></a>内存管理方案</h2><ul>
-<li><p>TaggedPointer</p>
-</li>
-<li><p>NONPOINTER_ISA</p>
-</li>
-<li><p>散列表</p>
-</li>
-</ul>
-<p>系统针对不同场景下提出的内存管理方案:</p>
-<ol>
-<li><p>对一些小对象，如 NSNumber 等，采用的是 TaggedPointer 内存管理方案（把指针指向的内容直接放在了指针变量的内存地址中）<a href="https://www.jianshu.com/p/e354f9137ba8" target="_blank" rel="noopener">戳这里</a></p>
-</li>
-<li><p>对于64位架构下的 iOS 应用程序采用的是 NONPOINTER_ISA 内存管理方案<br>NONPOINTER _ISA 内存管理方案的涵义：实际上在64位架构下 isa 这个指针本身是占64个 比特位的，那么实际上有32位或者说40位就够用了，剩余这些位数的比特位实际上是浪费的，苹果为了提高内存的利用率，在 isa 当中剩余的这些比特位当中，存储了一些关于内存管理当面的相关数据内容，所以说这个叫非指针型的 isa</p>
-</li>
-<li><p>散列表，散列表是一个很复杂的结构，其中包括了引用计数表和弱引用表  </p>
-</li>
-</ol>
-<h3 id="非指针型的-isa-内存管理方案-NONPOINTER-ISA"><a href="#非指针型的-isa-内存管理方案-NONPOINTER-ISA" class="headerlink" title="非指针型的 isa 内存管理方案 NONPOINTER_ISA"></a>非指针型的 isa 内存管理方案 NONPOINTER_ISA</h3><p> <img src="/img/NONPOINTER_ISA1.png" alt=""></p>
-<p> <img src="/img/NONPOINTER_ISA2.png" alt=""></p>
-<p>在 arm64 架构下，isa 指针一共有 64 个bit位，这 64 个bit位都存储了哪些内容：</p>
+<h3 id="ARC"><a href="#ARC" class="headerlink" title="ARC"></a>ARC</h3><p> <img src="/img/ARC.png" alt=""></p>
+<p>ARC：是自动引用计数管理内存</p>
+<p>实际上是由编译器自动为我们插入 retain release 之外，<strong>还需要 Runtime 的功能支持</strong>，然后由编译器和 Runtime 共同协作才能组成 ARC 的全部功能</p>
+<p>ARC 中禁止手动调用 MRC 当中独有的方法，比如 retain release retainCount dealloc，在 ARC 当中可以重写某个对象的 dealloc 方法，但是不能在 dealloc 方法当中显式调用 super dealloc 方法<br>除此之外 ARC 当中增加了 weak 和 strong 属性关键字</p>
+<h2 id="引用计数管理"><a href="#引用计数管理" class="headerlink" title="引用计数管理"></a>引用计数管理</h2><p>实现原理分析</p>
 <ul>
-<li><strong>第 0 位</strong> 是一个叫 indexed 的标志位，如果这个位置是 0 ，代表的是我们使用的 isa 指针只是一个纯的 isa 指针，它里面的内容就直接代表当前对象的类对象的地址，如果这个标志位是 1 的话就代表这个 isa 里面存储的不止是它的类对象的地址，而且还有内存管理方面的数据，那就是我们这里面要讲到的非指针型的 isa </li>
-<li><strong>第 1 位</strong> has_assoc ，是表示当前对象是否有关联对象，0 代表没有，1代表有</li>
-<li><strong>第 2 位</strong> has_cxx_dtor ,这个函数或者说这个变量标志表示的是当前对象是否有使用 C++ 相关的代码，那么在 ARC 当中也可以这个表示位来表示有些对象是通过 ARC 来进行内存管理的</li>
-<li><strong>3-35 位</strong> 表示的是当前对象的类对象的指针地址（一共有33位01的bit来表示当前对象的类对象的指针地址，我们需要把这个这个位置全部拿出来再去计算它对应的类对象的实际的指针地址）</li>
-<li><strong>36-41 位</strong> 这 6 位代表的是 magic 字段（不讲解）</li>
-<li><strong>42 位</strong> 是 weakly_referenced 就标识了这个对象是否有相应的弱引用指针</li>
-<li><strong>43 位</strong> deallocating 标志当前对象是否正在进行 dealloc 操作</li>
-<li><strong>44 位</strong> has_sidetable_rc 这个0是指当前 isa 指针当中如果所存储的引用计数已经达到了上限的话，那么需要外挂一个 sidetable 数据结构去存储相关的引用计数内容，那就是接下里要讲解的散列表</li>
-<li><strong>45-63 位</strong> 代表的是 extra_rc 也就是额外的引用计数，当引用计数在很小的值范围之内的话就会存到 isa 指针当中，而不是有单独的引用计数表去存储它</li>
+<li>alloc</li>
+<li>retain</li>
+<li>release</li>
+<li>retainCount</li>
+<li>dealloc</li>
 </ul>
-<p>通过对 NONPOINTER_ ISA 的 64 个bit位的分析，就应该清楚关于内存管理不仅仅是散列表，其实还有 isa 部分的 extra_rc 来存储相关的引用计数值</p>
-<h3 id="散列表内存管理方案"><a href="#散列表内存管理方案" class="headerlink" title="散列表内存管理方案"></a>散列表内存管理方案</h3><p> <img src="/img/散列表内存管理方案.png" alt=""></p>
-<p>散列表方案在源码中是通过 Side Tables() 结构来实现的</p>
-<p>Side Tables() 结构是什么？</p>
-<p>在他的结构下面挂了很多 Side Table 数据结构，这些数据结构在不同的架构上面是有不同个数的，比如在非嵌入式系统当中，Side Table 这个表一共有 64 个，在这里解释一下，Side Tables() 实际上是一个哈希表，可以通过一个对象指针来具体找到它对应的引用计数表或者说弱引用表在哪一张具体的 Side Table 当中</p>
-<p><strong>Side Table结构</strong></p>
-<p>实际上 Side Table 结构就包含了以下三个元素</p>
+<h3 id="1-alloc-实现"><a href="#1-alloc-实现" class="headerlink" title="1. alloc 实现"></a>1. alloc 实现</h3><ul>
+<li><p>进过一系列调用，最终调用了 C 函数 calloc</p>
+</li>
+<li><p>此时并没有设置引用计数为 1</p>
+</li>
+</ul>
+<p>alloc 比较简单，只是经过一系列的函数封装和调用最终调用了一个C 函数 calloc</p>
+<p>alloc 分配之后的对象它并没有设置引用计数为 1，但是通过 retainCount 获取它的引用计数时为 1，原因请往下看</p>
+<h3 id="2-retain-实现"><a href="#2-retain-实现" class="headerlink" title="2. retain 实现"></a>2. retain 实现</h3><p><img src="/img/retain实现.png" alt=""></p>
 <ul>
-<li>自旋锁</li>
-<li>引用计数表</li>
-<li>弱引用表</li>
+<li>这段代码表示通过当前对象的指针到 SideTables 当中去获取它所指的 SideTable ，当获取到这个对象引用计数相关的 SideTable 之后，再在这个 SideTable 的结构当中去获取引用计数 refcnts 成员变量（引用计数表），通过当前对象的指针在这个 SideTables 当中的引用计数表当中去获取当前对象的引用计数值</li>
+<li>在进行 retain 操作的时候是<strong>进行了两次哈希查找</strong>，最终查找到的结构是 size_t 类型的（无符号 long 型）值，然后再对引用计数值加一操作</li>
+<li>这里面所加的是一个 SIDE_TAVLE_RC_ONE 的宏定义，加的值不是实际的 1，因为我们在讲述 size_t 这个存储引用计数变量的时候，说明了它64个bit位前两个位置不是存储引用计数的，而是在后面的62位中存储的引用计数，这里的所谓加一操作实际上加上了对应的偏移量，这个偏移量实际上应该是 4，给我们反应出来的结果就是加一操作</li>
 </ul>
-<p><strong>问题：为什么不是一个 SideTable，而是有多个 SideTable 共同组成 SideTables？</strong></p>
-<p><img src="/img/为什么不是一个SideTable.png" alt=""></p>
-<p>假如说只有一张 SideTable ，那么在内存中分配的所有对象的引用计数或者说弱引用存储都放到一张大表当中，这个时候如果说要操作某一个对象的引用计数值进行修改，比如说加一减一的操作，由于所有的对象可能是在不同的线程当中去分配创建的，包括调用他们的 retain，release等方法也可能是在不同线程当中操作的，那么这个时候再对这张表进行操作的时候，需要进行加锁处理才能保证对数据的访问安全，在这个过程当中就存在了效率问题，如果现在已经有一个对象在操作这张表，那么下一个对象就要等前一个对象操作完后把锁释放之后它才能操作这张表</p>
-<p><strong>系统为了解决效率问题引用了分离锁的技术方案</strong></p>
-<p><img src="/img/分离锁.png" alt=""></p>
-<p>可以把内存对象所对应的引用技术表可以分拆成多个部分，比如说把它分拆成8个，分拆成8个需要对这8个表分别加锁</p>
-<p>比如说某一个对象A在第一张表里面，另一个对象B在另一张表中，那么当A和B同时进行引用计数操作的时候可以并发操作，但是如果按照一张表的情况下他们就需要顺序操作</p>
-<p><strong>怎样实现快速分流？</strong></p>
-<p>快速分流指的是通过一个对象的指针如何快速的定位到它属于哪张 side Table 表？</p>
-<p><img src="/img/怎样实现快速分流.png" alt=""></p>
-<p>side Tables 的本质是一张哈希表，这张哈希表当中可能有64张具体的 side Table ，然后存储不同对象的引用计数表和弱引用表</p>
-<p><strong>哈希表的概念这里简单讲解一下：</strong></p>
-<p>看这幅图，左侧是一个对象，这个对象指针可以作为一个 Key ，经过哈希函数的一个运算然后会计算出一个值来决定出这个对象它所对应的 side Table 是哪张或者说在数组的索引是多少</p>
-<p><img src="/img/哈希查找.png" alt=""></p>
-<p><strong>哈希查找的过程：</strong></p>
-<p>比如说给定值是对象的内存地址，目标值是 side Tables 结构当中的下标索引</p>
-<p>现在给一个对象的内存指针地址，通过一个哈希函数把指针作为哈希函数的参数，然后经过函数的运算就可以得出一个数组的下标索引值<br>哈希函数对于 side Tables 具体的情况，实际上表达式就是这样的，也就是说通过对象的内存地址来和 side Tables 数组的个数来进行取余运算，这样就可以计算出一个对象指针它所对应的引用计数表或者弱引用表在哪一张具体的 side Table 当中</p>
-<p><strong>为什么通过哈希查找？</strong></p>
-<p>是为了提高查找效率，比如说存储的时候是通过这个哈希函数进行存储的，比如说这个数组个数是8，内存地址假设是1的话，那么取余就是1，就把这个对象存储到数组对应第一个位置，当我们去访问这个对象的时候，也不需要根据这个数组进行遍历来比较指针值，而是也通过这个函数进行一次运算去取值，这个过程不涉及遍历的操作，自然查找效率是比较高的，内存地址的分布是均匀分布，可以称这个哈希函数为一个均匀散列函数</p>
+<p>思考：在进行 retain 操作的时候，系统是怎样查找它对应的引用计数的？</p>
+<h3 id="3-release-实现"><a href="#3-release-实现" class="headerlink" title="3. release 实现"></a>3. release 实现</h3><p><img src="/img/release实现.png" alt=""></p>
+<ul>
+<li>第一行代码和上面分析的一样，通过当前对象的指针经过哈希算法在 SideTables 当中去获取它所指的 SideTable</li>
+<li>然后再根据当前对象指针访问 table 当中的引用计数表去查找它对应的引用计数表</li>
+<li>查找到之后，把对应的值进行减一操作</li>
+</ul>
+<h3 id="4-retainCount-实现"><a href="#4-retainCount-实现" class="headerlink" title="4. retainCount 实现"></a>4. retainCount 实现</h3><p><img src="/img/retainCount实现.png" alt=""></p>
+<ul>
+<li>第一句代码同上</li>
+<li>声明了一个局部变量，指定它的值是 1，然后通过当前对象到引用计数表当中去查找，把查找的结果做一个向右便宜的操作，然后再结合这个局部变量的 1 进行一个加的操作，再返回给调用方</li>
+<li>所以说，如果我们刚新 alloc 出来的对象，在引用计数表当中是没有这个对象相关联的一个 Key Value 的映射的，这个值读出来就是 0，然后由于局部变量是 1，所以此时只经过 alloc 调用产生的对象去调用它的 retainCount 就可以获取到它的值为 1</li>
+</ul>
+<h3 id="5-dealloc-实现（重要）"><a href="#5-dealloc-实现（重要）" class="headerlink" title="5. dealloc 实现（重要）"></a>5. dealloc 实现（重要）</h3><p><img src="/img/dealloc实现.png" alt=""></p>
+<ul>
+<li>首先会调用 _ objc _rootDealloc() 私有函数</li>
+<li>这个函数又会调用 rootDealloc() 函数，然后会在这个函数内部判断当前对象是否可以直接释放</li>
+<li>如果这些条件都不满足就直接调用 C 函数的 free() 进行对象的内存释放</li>
+<li>否则就要再调用一个函数做后续的清理</li>
+</ul>
+<p>直接释放的判断条件</p>
+<ul>
+<li>nonpointer_isa：判断当前对象是否使用了非指针型的 isa</li>
+<li>weakly_referenced：当前对象是否有 weak 指针指向它</li>
+<li>has_assoc：当前对象是否有关联对象</li>
+<li>has_cxx_dtor：当期对象的内部实现是否有涉及到一些C++相关的内容，以及当前对象是否使用 ARC 管理内存，如果有涉及C++或者使用ARC管理内存返回YES</li>
+<li>has_sidetable_rc：当前对象的引用计数是否是在通过 sidetable 当中的引用计数表来维护的，因为在前面讲述关于  nonpointer_isa 的时候提到过如果说采用这中非指针型的 isa 指针的话，它当中存储了一部分引用计数的值，当超出上限的时候，再使用 sidetable 这种方式去存储</li>
+</ul>
+<p>只有当当前对象既不是非指针型的 isa ，同时没有弱引用，并且也没有关联对象，并且也没有涉及到 C++ 相关内容，并且没有涉及到 ARC，并且当前对象没有采用 sidetable 来存储引用计数，只有在这种条件下，才可以调用 C 函数直接释放，否则的话就要调用 object_dispose() 对象清楚函数</p>
+<p>思考：为什么要进行这么多的判断才能进行后续的 object_dispose() 方法调用？</p>
+<ul>
+<li>如果对象有弱引用的话，那么在这个对象释放废弃的时候需要对它的引用对象进行处理</li>
+<li>如果有关联对象需要对关联对象进行处理</li>
+<li>包括C++、引用计数相关的处理</li>
+</ul>
+<h4 id="object-dispose-实现"><a href="#object-dispose-实现" class="headerlink" title="object_dispose() 实现"></a>object_dispose() 实现</h4><p><img src="/img/object_dispose实现.png" alt=""></p>
+<ul>
+<li>首先这个函数内部会调用一个 objc_destructInstance() 函数，看这名字就可以得出是销毁实例的含义</li>
+<li>然后这个方法调用之后再调用 C 函数的 free()</li>
+<li>然后结束 dealloc 实现</li>
+</ul>
+<h4 id="objc-destructInstance-实现"><a href="#objc-destructInstance-实现" class="headerlink" title="objc_destructInstance() 实现"></a>objc_destructInstance() 实现</h4><p><img src="/img/objc_destructInstance实现.png" alt=""></p>
+<ul>
+<li>在这个函数当中首先会判断当前还有是否有 C++ 相关的内容或者当前对象是否采用的是 ARC</li>
+<li>如果有的话会调用 objec_cxxDestruct() 这个方法，如果没有的话会判断当前对象是否有关联对象</li>
+<li>如果当前对象有关联对象的话在 dealloc 内部实现会调用 _object_remove_assocations() ,通过名称可以看出是做了对象的相关关联对象的移除</li>
+<li>关联对象的判断过了之后会调用一个叫 clearDeallocating() 函数，然后结束 dealloc 流程</li>
+</ul>
+<p>思考：我通过关联对象的技术为一个类添加了一些实例变量，那么在对象的 dealloc 方法方法当中是否有必要对它的关联对象进行移除操作？<br>在系统的 dealloc 内部实现当中，会自动判断当前对象是否有关联对象，如果有的话系统内部就帮助我们把相关的关联对象移除掉</p>
+<h4 id="clearDeallocating-实现"><a href="#clearDeallocating-实现" class="headerlink" title="clearDeallocating() 实现"></a>clearDeallocating() 实现</h4><p><img src="/img/clearDeallocating实现.png" alt=""></p>
+<ul>
+<li>首先需要调用 sidetable_clearDeallocating() 函数</li>
+<li>之后会调用 weak_clear_no_lock() 函数，这个函数做的就是将指向该对象的弱引用指针置为 nil</li>
+<li>之后会调用 table.refcnts.erase() ,table 的引用计数的擦除操作，实际上就是将当前对象在引用计数表当中的一些存储数据给清除掉</li>
+<li>然后结束调用流程 </li>
+</ul>
+<p>思考：如果一个对象有 weak 指针指向他，当这个对象 dealloc 或者说废弃之后，他的 weak 指针为何会自动置为 nil ？<br>就是因为在 dealloc 的内部实现当中有做关于他相关的弱引用指针自动置为 nil 的操作的</p>
 </div><iframe src="/donate/?AliPayQR=/img/AliPayQR.png&amp;WeChatQR=/img/WeChatQR.png&amp;GitHub=null&amp;BTCQR=null&amp;BTCKEY=null&amp;PayPal=null" style="overflow-x:hidden; overflow-y:hidden; border:0xp none #fff; min-height:240px; width:100%;" frameborder="0" scrolling="no"></iframe><div class="tags"><a href="/tag/Objective-C/">Objective-C</a></div><div class="post-nav"><a class="pre" href="/2018/06/28/内存管理--弱引用管理/">内存管理(四)--弱引用管理</a><a class="next" href="/2018/06/18/内存管理--有关散列表实现的内存管理方法的数据结构/">内存管理(二)--有关散列表实现的内存管理方法的数据结构</a></div></div></div></div><div class="pure-u-1-4 hidden_mid_and_down"><div id="sidebar"><div class="widget"><div class="search-form"><input id="local-search-input" placeholder="Search" type="text" name="q" results="0"/><div id="local-search-result"></div></div></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/Block/">Block</a><span class="category-list-count">4</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/RunLoop/">RunLoop</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Runtime/">Runtime</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/UI视图/">UI视图</a><span class="category-list-count">3</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/iOS/">iOS</a><span class="category-list-count">8</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/iOS/三方框架/">三方框架</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/内存管理/">内存管理</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/性能优化/">性能优化</a><span class="category-list-count">3</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/问题记录/">问题记录</a><span class="category-list-count">3</span></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tag/Objective-C/" style="font-size: 15px;">Objective-C</a> <a href="/tag/Runtime/" style="font-size: 15px;">Runtime</a> <a href="/tag/Swift/" style="font-size: 15px;">Swift</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最近文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2018/08/06/Block--Block 的内存管理/">Block(三)--Block 的内存管理</a></li><li class="post-list-item"><a class="post-list-link" href="/2018/07/21/Block--_ _block 修饰符/">Block(二)--_ _block 修饰符</a></li><li class="post-list-item"><a class="post-list-link" href="/2018/07/16/Block--Block 本质和截获变量/">Block(一)--Block 本质和截获变量</a></li><li class="post-list-item"><a class="post-list-link" href="/2018/07/08/内存管理--自动释放池/">内存管理(五)--自动释放池</a></li><li class="post-list-item"><a class="post-list-link" href="/2018/06/28/内存管理--弱引用管理/">内存管理(四)--弱引用管理</a></li><li class="post-list-item"><a class="post-list-link" href="/2018/06/21/内存管理--引用计数管理/">内存管理(三)--引用计数管理</a></li><li class="post-list-item"><a class="post-list-link" href="/2018/06/18/内存管理--有关散列表实现的内存管理方法的数据结构/">内存管理(二)--有关散列表实现的内存管理方法的数据结构</a></li><li class="post-list-item"><a class="post-list-link" href="/2018/06/13/内存管理--内存管理方案/">内存管理(一)--内存管理方案</a></li><li class="post-list-item"><a class="post-list-link" href="/2018/06/05/Block--Block 的循环引用/">Block(四)--Block 的循环引用</a></li><li class="post-list-item"><a class="post-list-link" href="/2018/06/03/内存管理--循环引用/">内存管理(六)--循环引用</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://www.baidu.com/" title="百度" target="_blank">百度</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">Copyright © 2018 <a href="/." rel="nofollow">怪兽.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho. <span>您是访问本站的第<span id="busuanzi_value_site_uv"></span>位小伙伴</span> <script type="text/javascript">var cnzz_protocol = (("https:" == document.location.protocol) ? " https://" : " http://");document.write(unescape("%3Cspan id='cnzz_stat_icon_1271673961'%3E%3C/span%3E%3Cscript src='" + cnzz_protocol + "s13.cnzz.com/z_stat.php%3Fid%3D1271673961%26show%3Dpic1' type='text/javascript'%3E%3C/script%3E"));</script></a></div></div></div><a class="show" id="rocket" href="#top"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/3.2.5/jquery.fancybox.min.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/fancybox/3.2.5/jquery.fancybox.min.css"><script type="text/javascript" src="/js/search.js?v=0.0.0"></script><script>var search_path = 'search.xml';
 if (search_path.length == 0) {
    search_path = 'search.xml';
