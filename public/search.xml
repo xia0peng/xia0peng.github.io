@@ -8,31 +8,30 @@
       <content type="html"><![CDATA[<hr>
 <p><a href="https://xiaopengmonsters.github.io/2018/07/16/Block--Block%20%E6%9C%AC%E8%B4%A8%E5%92%8C%E6%88%AA%E8%8E%B7%E5%8F%98%E9%87%8F/" target="_blank" rel="noopener">Block(一) – Block 本质和截获变量</a><br><a href="https://xiaopengmonsters.github.io/2018/07/21/Block--_%20_block%20%E4%BF%AE%E9%A5%B0%E7%AC%A6/" target="_blank" rel="noopener">Block(二) – _ _block 修饰符</a><br><a href="https://xiaopengmonsters.github.io/2018/08/06/Block--Block%20%E7%9A%84%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/" target="_blank" rel="noopener">Block(三) – Block 的内存管理</a><br><a href="https://xiaopengmonsters.github.io/2018/06/05/Block--Block%20%E7%9A%84%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">Block(四) – Block 的循环引用</a></p>
 <hr>
-<h2 id="先思考两个问题"><a href="#先思考两个问题" class="headerlink" title="先思考两个问题"></a>先思考两个问题</h2><p><strong>题1：</strong></p>
-<p><img src="/img/Block题1.png" alt=""></p>
-<p>以下划线开头的 array 和以下划线开头的 strBlk 都是作为当前对象的两个成员变量，而 array 一般用 strong 关键字修饰，block 一般用 copy 修饰<br>在代码中首先对 array 进行创建，之后创建 strBlk ，在 block 的表达式当中，使用到了当前对象的 array 成员变量，之后再对这个 block 进行调用</p>
-<p>思考：这段代码有什么问题？</p>
-<p>答案：会产生循环引用，是自循环方式的循环引用</p>
-<p>由于当前对象是通过 copy 属性关键字声明的 block，所以当前对象对于这个 block 是有一个强引用的，而 block 的表达式中又使用到了当前对象的 array 成员变量，在截获变量知识中，关于 block 中所使用到的对象类的局部变量或者说成员变量，会连同其属性关键字一块截获，而 array 属性关键字是通过 strong 来修饰的，所以在这个 block 中就有一个 strong 类型的指针指向原来的这个对象或者说当前对象，由此就产生了一个循环引用</p>
-<p><img src="/img/Block题1答案.png" alt=""></p>
-<p>可以通过在当前栈上去声明或者说创建一个 _ _weak 所有权修饰符修饰的一个 weakArray 这么样的一个指针或者说变量来指向原对象的 array 成员变量，然后在这个 block 中使用创建的 weakArray ，由此就可以解除自循坏引用（是通过避免循环引用来解除的）</p>
-<p><strong>题2：</strong></p>
-<p><img src="/img/Block题2.png" alt=""></p>
-<p>在这个栈上面通过 _ _block 修饰符所修饰的变量来指向当前对象，同时当前对象的成员变量 block 在这里进行创建，block 的表达式当中有使用到 self 的一个 var 成员变量，在这个是使用的是 blockSelf 而不是直接使用当前对象，然后对其进行调用</p>
-<p>答案：</p>
-<ul>
-<li><strong>在 MRC 下</strong>，不会产生循环应用</li>
-<li><strong>在ARC下</strong>，会产生循环引用，引起内存泄漏</li>
+<h3 id="Block-的类型"><a href="#Block-的类型" class="headerlink" title="Block 的类型"></a>Block 的类型</h3><p>impl.isa 就是标识当前 block 是哪种类型的</p>
+<p><img src="/img/Block的类型.png" alt=""></p>
+<h3 id="不同-Block-的内存分配"><a href="#不同-Block-的内存分配" class="headerlink" title="不同 Block 的内存分配"></a>不同 Block 的内存分配</h3><p><img src="/img/不同Block的内存分配.png" alt=""></p>
+<h3 id="Block-的-copy-操作"><a href="#Block-的-copy-操作" class="headerlink" title="Block 的 copy 操作"></a>Block 的 copy 操作</h3><p><img src="/img/Block的copy操作.png" alt=""></p>
+<p>比如声明一个对象的成员变量是一个 block，而在栈上面去创建这个 block 同时赋值给成员变量 block，如果成员变量 block 没有使用 copy 关键字的话，比如使用的是 assigin，那么当具体通过成员变量去访问对应 block 的话，可能就由于栈所对应的函数退出之后，在内存当中就销毁掉了，这个时候再继续访问会因为内存崩溃</p>
+<h3 id="栈上-Block-的销毁"><a href="#栈上-Block-的销毁" class="headerlink" title="栈上 Block 的销毁"></a>栈上 Block 的销毁</h3><p><img src="/img/栈上Block的销毁.png" alt=""></p>
+<p>比如说在栈上有一个 杠杠block 变量，同时也有一个 Block，在变量的作用域结束之后或者说栈上的函数退出之后，那么关于栈上的 杠杠block 变量以及 Block 都会随之而销魂<br>由于 杠杠block 修饰的变量已经变成了对象，所以在这里也提到了关于 _ _block 变量在变量作用域结束之后一个销魂的逻辑</p>
+<h3 id="栈上-Block-的-copy"><a href="#栈上-Block-的-copy" class="headerlink" title="栈上 Block 的 copy"></a>栈上 Block 的 copy</h3><p><img src="/img/栈上Block的copy.png" alt=""></p>
+<p>比方说在栈上有一个 Block，Block 当中它使用到了一个 杠杠block 变量（可能是我们对这个变量赋值了，所以声明为 杠杠block 类型），当对栈上的 Block 进行 copy 操作之后，会在堆上产生一个和原来栈上面的一模一样的对应的 Block 和对应的 _ _block 变量，但是他们是分占两块内存空间，左侧是在栈上，右侧是在堆上，那么随着变量作用域的结束，栈上的 Block 会随之而销毁</p>
+<p>思考：当对栈上的 Block 进行 copy 操作之后，在 MRC 环境下，是否会引起内存泄露？<br>答案：是肯定的，假如进行了 copy 操作之后同时堆上的 Block 没有额外其他成员变量指向他，那么就和 alloc 出一个对象没有调用对应的 release 的效果是一样的，产生内存泄露</p>
+<h3 id="栈上-block-变量的-copy"><a href="#栈上-block-变量的-copy" class="headerlink" title="栈上 _ _block 变量的 copy"></a>栈上 _ _block 变量的 copy</h3><p><img src="/img/栈上杠杠block变量的copy.png" alt=""></p>
+<p>比如说在栈上有一个  <strong>_ _block</strong> 变量，在这个  <strong>_ _block</strong> 变量中有一个  <strong>_ _forwarding</strong> 指针，在上一节讲过，在栈上 <strong>_ _forwarding</strong> 指针是指向它自身的<br>在对 <strong>_ _block</strong> 变量进行 copy 操作之后，会在堆上面产生一个 <strong>_ _block</strong> 变量和 栈上的是完全一致的，但是是两块内存空间</p>
+<p>此时还有额外的变化在里面，可以回答 <strong>_ _forwarding</strong> 这个指针所存在的意义：<br>比方说对栈上的 <strong>_ _block</strong> 进行 copy 操作之后，栈上的  <strong>_ _forwarding</strong> 指针实际上指向的是堆上面的  <strong>_ _block</strong> 变量，而堆上面的  <strong>_ _forwarding</strong> 指针指向是其自身</p>
+<p>所以说在对 multiplier 这个整型值进行值的改变的时候使用的其实转换出来的都是同一行代码，而对不论是栈上还是堆上的 Block 操作都是生效的，来具体解释一下：<br>比如说现在在栈上面去对某一个  <strong>_ _block</strong> 变量进行修改，这个时候如果对栈上的  <strong>_ _block</strong> 变量已经做过 copy 操作之后，实际上修改的不是栈上的  <strong>_ _block</strong> 变量对应的值，而是通过栈上  <strong>_ _block</strong> 变量里面的  <strong>_ _forwarding</strong> 指针找到堆上面的  <strong>_ _block</strong> 变量，然后对堆上面对应的变量 （multiplier ）值进行复制<br>那么同样的如果说 <strong>_ _block</strong> 变量由于被成员变量的一个 Block 所持有的话，当我们在另个一个方法或者说其他的地方去调用这个对应的 <strong>_ _block</strong> 变量的修改的情况下，那实际上是通过自身的 <strong>_ _forwarding</strong> 指向来修改的</p>
+<p>经过编译器编译，无论这行代码出现在栈上的调用还是出现在堆上的调用，实际上最终所修改的值都是对堆上的 <strong>_ _block</strong> 变量进行修改的，说的这个大前提是栈上的 <strong>_ _block</strong> 变量经过了 copy 在堆上面产生了一致的 <strong>_ _block</strong> 变量<br>如果说对栈上的 <strong>_ _block</strong> 变量没有做 copy 操作，那么这行代码所修改的就是栈上的 <strong>_ _block</strong> 变量</p>
+<h3 id="forwarding-总结"><a href="#forwarding-总结" class="headerlink" title="_ _forwarding 总结"></a>_ _forwarding 总结</h3><p><img src="/img/forwarding总结.png" alt=""></p>
+<p>在左侧有一个代码段，声明了一个 <strong>_ _block</strong> 修饰的整型变量，初始化值是10<br>然后定义了一个 <strong>_blk</strong> 这么一个当前对象的成员变量形式的 Block，然后在栈上进行创建<br>之后在修改 multiplier 的值为 6<br>调用一个执行 Block 的一个同一个实例的另一个方法</p>
+<p>讲解：在栈上创建了这个局部变量，通过 <strong>_ _block</strong> 修饰符修饰之后，这个局部变量就变成了一个对象，所以说这一步 multiplier = 6 的赋值实际上不是对变量进行赋值，而是通过 multiplier 这个对象的 <strong>_ _forwording</strong> 指针对其成员变量 multiplier 进行赋值<br>然后 <strong>_blk</strong> 这个变量实际上是某一对象的成员变量，当对它进行赋值操作的时候，会对它进行一个 copy，这个 block 就会跑到堆上面去或者说在堆上面有一个副本，然后再进行Block的执行</p>
+<p>如果说这个 <strong>_blk</strong> 没进行 copy 操作，那么修改的就是栈上 <strong>_ _block</strong> 变量，如果对这个 <strong>_blk</strong> 进行了 copy 操作，这个行代码 multiplier = 6 所代表的含义就是通过栈上的 multiplier 的 <strong>_ _forwording</strong> 指针找到堆上面所对应的 multiplier 的copy 副本，然后对其副本进行值的修改改成6</p>
+<p>右边调用了堆上的 block ，入参是 4，在调用的时候，在 Block 的执行体中所使用到的 multiplier <strong>_ _block</strong> 变量实际上使用的是堆上面的 <strong>_block</strong> 变量，在这里经过copy之后是对堆上面变量的修改，所以结构是4*6=24</p>
+<h3 id="forwarding-存在的意义"><a href="#forwarding-存在的意义" class="headerlink" title="_ _forwarding 存在的意义"></a>_ _forwarding 存在的意义</h3><ul>
+<li><strong>不论在任何内存位置，都可以顺利的访问同一个 _ _blcok 变量</strong></li>
 </ul>
-<p><img src="/img/ARC下的循环引用.png" alt=""></p>
-<p>比方说这个对象有一个成员变量 block，那么它持有 block，而这个 block 当中使用到了 <em> </em> block 修饰符所修饰的变量，所以 block 对象它持有了 <em> </em> block 变量，而 _ <em>block 变量它本身也是对原对象有一个强引用的持有的，因为 </em> _ block 变量它的指向是原来的对象，这种循环引用叫大环引用</p>
-<p><img src="/img/ARC下的循环引用答案.png" alt=""></p>
-<p>可以通过断环的方式解除</p>
-<p>具体的改写方案：（ARC下的解决方案）</p>
-<p><img src="/img/ARC下的解决方案.png" alt=""></p>
-<p>在 block 内部这个位置加上对 blockSelf 这个变量进行 nil 赋值操作就可以规避循环引用</p>
-<p>当调用这个 block 之后就会断开刚才所说的这个环然后就可以都得到内存的释放和销毁</p>
-<p>但是这种解决方案有一个弊端，就是说如果我们很长一段时间或者说永远都不会调用这个 block 的话，这个循环引用的环就会一直都存在</p>
+<p>如果没有对 <strong>_ _block</strong> 变量进行 copy 的话，那么实际上操作的就是栈上的 <strong>_ _block</strong> 变量<br>如果发生了 copy 之后，无论是在栈上还是在堆上，对 <strong>_ _block</strong> 的修改或者说赋值操作都是操作的堆上面的 <strong>_ _block</strong> 变量，同时栈上关于 <strong>_ _block</strong> 变量的使用也都是使用的堆上的 <strong>_ _block</strong> 变量</p>
 ]]></content>
       
         <categories>
@@ -56,31 +55,22 @@
       <content type="html"><![CDATA[<hr>
 <p><a href="https://xiaopengmonsters.github.io/2018/07/16/Block--Block%20%E6%9C%AC%E8%B4%A8%E5%92%8C%E6%88%AA%E8%8E%B7%E5%8F%98%E9%87%8F/" target="_blank" rel="noopener">Block(一) – Block 本质和截获变量</a><br><a href="https://xiaopengmonsters.github.io/2018/07/21/Block--_%20_block%20%E4%BF%AE%E9%A5%B0%E7%AC%A6/" target="_blank" rel="noopener">Block(二) – _ _block 修饰符</a><br><a href="https://xiaopengmonsters.github.io/2018/08/06/Block--Block%20%E7%9A%84%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/" target="_blank" rel="noopener">Block(三) – Block 的内存管理</a><br><a href="https://xiaopengmonsters.github.io/2018/06/05/Block--Block%20%E7%9A%84%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">Block(四) – Block 的循环引用</a></p>
 <hr>
-<h2 id="先思考两个问题"><a href="#先思考两个问题" class="headerlink" title="先思考两个问题"></a>先思考两个问题</h2><p><strong>题1：</strong></p>
-<p><img src="/img/Block题1.png" alt=""></p>
-<p>以下划线开头的 array 和以下划线开头的 strBlk 都是作为当前对象的两个成员变量，而 array 一般用 strong 关键字修饰，block 一般用 copy 修饰<br>在代码中首先对 array 进行创建，之后创建 strBlk ，在 block 的表达式当中，使用到了当前对象的 array 成员变量，之后再对这个 block 进行调用</p>
-<p>思考：这段代码有什么问题？</p>
-<p>答案：会产生循环引用，是自循环方式的循环引用</p>
-<p>由于当前对象是通过 copy 属性关键字声明的 block，所以当前对象对于这个 block 是有一个强引用的，而 block 的表达式中又使用到了当前对象的 array 成员变量，在截获变量知识中，关于 block 中所使用到的对象类的局部变量或者说成员变量，会连同其属性关键字一块截获，而 array 属性关键字是通过 strong 来修饰的，所以在这个 block 中就有一个 strong 类型的指针指向原来的这个对象或者说当前对象，由此就产生了一个循环引用</p>
-<p><img src="/img/Block题1答案.png" alt=""></p>
-<p>可以通过在当前栈上去声明或者说创建一个 _ _weak 所有权修饰符修饰的一个 weakArray 这么样的一个指针或者说变量来指向原对象的 array 成员变量，然后在这个 block 中使用创建的 weakArray ，由此就可以解除自循坏引用（是通过避免循环引用来解除的）</p>
-<p><strong>题2：</strong></p>
-<p><img src="/img/Block题2.png" alt=""></p>
-<p>在这个栈上面通过 _ _block 修饰符所修饰的变量来指向当前对象，同时当前对象的成员变量 block 在这里进行创建，block 的表达式当中有使用到 self 的一个 var 成员变量，在这个是使用的是 blockSelf 而不是直接使用当前对象，然后对其进行调用</p>
-<p>答案：</p>
-<ul>
-<li><strong>在 MRC 下</strong>，不会产生循环应用</li>
-<li><strong>在ARC下</strong>，会产生循环引用，引起内存泄漏</li>
-</ul>
-<p><img src="/img/ARC下的循环引用.png" alt=""></p>
-<p>比方说这个对象有一个成员变量 block，那么它持有 block，而这个 block 当中使用到了 <em> </em> block 修饰符所修饰的变量，所以 block 对象它持有了 <em> </em> block 变量，而 _ <em>block 变量它本身也是对原对象有一个强引用的持有的，因为 </em> _ block 变量它的指向是原来的对象，这种循环引用叫大环引用</p>
-<p><img src="/img/ARC下的循环引用答案.png" alt=""></p>
-<p>可以通过断环的方式解除</p>
-<p>具体的改写方案：（ARC下的解决方案）</p>
-<p><img src="/img/ARC下的解决方案.png" alt=""></p>
-<p>在 block 内部这个位置加上对 blockSelf 这个变量进行 nil 赋值操作就可以规避循环引用</p>
-<p>当调用这个 block 之后就会断开刚才所说的这个环然后就可以都得到内存的释放和销毁</p>
-<p>但是这种解决方案有一个弊端，就是说如果我们很长一段时间或者说永远都不会调用这个 block 的话，这个循环引用的环就会一直都存在</p>
+<h3 id="什么场景下需要使用-block-修饰符"><a href="#什么场景下需要使用-block-修饰符" class="headerlink" title="什么场景下需要使用 _ _block 修饰符"></a>什么场景下需要使用 _ _block 修饰符</h3><p><img src="/img/__block修饰符使用场景.png" alt=""></p>
+<h3 id="思考两个题先"><a href="#思考两个题先" class="headerlink" title="思考两个题先"></a>思考两个题先</h3><p><img src="/img/笔试题的坑1.png" alt=""></p>
+<p><img src="/img/笔试题的坑2.png" alt=""></p>
+<h3 id="对变量进行赋值时，-block-具体使用特点"><a href="#对变量进行赋值时，-block-具体使用特点" class="headerlink" title="对变量进行赋值时，_ _block 具体使用特点"></a>对变量进行赋值时，_ _block 具体使用特点</h3><p><img src="/img/__block具体使用特点.png" alt=""></p>
+<p>因为 block 的截获变量特性，对于全局变量和静态全局变量不涉及截获操作，那么就是对全局变量和静态全局变量直接使用的，所以对其值进行操作的时候是不需要 杠杠block 修饰的<br>对于静态局部变量是通过指针形式来使用操作对应的变量的，那实际上操作的就是 block 外部的变量，所以说这种场景下也是不需要 _ _block 修饰的</p>
+<h3 id="Block-笔试题"><a href="#Block-笔试题" class="headerlink" title="_ _Block 笔试题"></a>_ _Block 笔试题</h3><p><img src="/img/__Block笔试题.png" alt=""></p>
+<h3 id="block-修饰符的机制和原理："><a href="#block-修饰符的机制和原理：" class="headerlink" title="_ _block 修饰符的机制和原理："></a>_ _block 修饰符的机制和原理：</h3><p><strong>_ _block 修饰的变量变成了对象</strong></p>
+<p><img src="/img/变量变成了对象.png" alt=""></p>
+<p>加了 杠杠block 修饰符之后，在编译后，这个整型变量最终就变成了一个结构体<br>结构体中有 void* 类型的 isa 指针，所以可以收 杠杠block 修饰符修饰的变量最终变成了对象<br>之后有一个指向同类型的指针 _ _forwarding<br>最后有一个成员变量 ，就是在函数当中所定义的局部变量</p>
+<p>比如说在 Block 定义后面对局部变量进行 4 的赋值操作，实际上这个变量已经变成了一个对象，是通过这个对象当中的 _ _forwarding 指针去找到对应的一个对象，然后对其成员变量进行值的赋值</p>
+<p>在方法当中对局部变量的赋值就改写成了对于他的对象通过 _ _forwarding 指针来修改对应的变量值</p>
+<p><strong>栈上的 _ _forwarding 指向它自身的</strong></p>
+<p>栈上的 block 进行局部变量的赋值，实际上 杠杠forwarding 指针指向的仍是自己所以修改的变量就是栈上 _ _block 它内部的一个成员值</p>
+<h3 id="留一个思考问题"><a href="#留一个思考问题" class="headerlink" title="留一个思考问题"></a>留一个思考问题</h3><p><img src="/img/杠杠forwarding用来干什么的.png" alt=""></p>
+<p>思考是很有意思的事 ~ ~ ~</p>
+<p>_ _forwarding 的内容详见<a href="https://xiaopengmonsters.github.io/2018/08/06/Block--Block%20%E7%9A%84%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/" target="_blank" rel="noopener">Block(三) – Block 的内存管理</a></p>
 ]]></content>
       
         <categories>
@@ -104,31 +94,30 @@
       <content type="html"><![CDATA[<hr>
 <p><a href="https://xiaopengmonsters.github.io/2018/07/16/Block--Block%20%E6%9C%AC%E8%B4%A8%E5%92%8C%E6%88%AA%E8%8E%B7%E5%8F%98%E9%87%8F/" target="_blank" rel="noopener">Block(一) – Block 本质和截获变量</a><br><a href="https://xiaopengmonsters.github.io/2018/07/21/Block--_%20_block%20%E4%BF%AE%E9%A5%B0%E7%AC%A6/" target="_blank" rel="noopener">Block(二) – _ _block 修饰符</a><br><a href="https://xiaopengmonsters.github.io/2018/08/06/Block--Block%20%E7%9A%84%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/" target="_blank" rel="noopener">Block(三) – Block 的内存管理</a><br><a href="https://xiaopengmonsters.github.io/2018/06/05/Block--Block%20%E7%9A%84%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">Block(四) – Block 的循环引用</a></p>
 <hr>
-<h2 id="先思考两个问题"><a href="#先思考两个问题" class="headerlink" title="先思考两个问题"></a>先思考两个问题</h2><p><strong>题1：</strong></p>
-<p><img src="/img/Block题1.png" alt=""></p>
-<p>以下划线开头的 array 和以下划线开头的 strBlk 都是作为当前对象的两个成员变量，而 array 一般用 strong 关键字修饰，block 一般用 copy 修饰<br>在代码中首先对 array 进行创建，之后创建 strBlk ，在 block 的表达式当中，使用到了当前对象的 array 成员变量，之后再对这个 block 进行调用</p>
-<p>思考：这段代码有什么问题？</p>
-<p>答案：会产生循环引用，是自循环方式的循环引用</p>
-<p>由于当前对象是通过 copy 属性关键字声明的 block，所以当前对象对于这个 block 是有一个强引用的，而 block 的表达式中又使用到了当前对象的 array 成员变量，在截获变量知识中，关于 block 中所使用到的对象类的局部变量或者说成员变量，会连同其属性关键字一块截获，而 array 属性关键字是通过 strong 来修饰的，所以在这个 block 中就有一个 strong 类型的指针指向原来的这个对象或者说当前对象，由此就产生了一个循环引用</p>
-<p><img src="/img/Block题1答案.png" alt=""></p>
-<p>可以通过在当前栈上去声明或者说创建一个 _ _weak 所有权修饰符修饰的一个 weakArray 这么样的一个指针或者说变量来指向原对象的 array 成员变量，然后在这个 block 中使用创建的 weakArray ，由此就可以解除自循坏引用（是通过避免循环引用来解除的）</p>
-<p><strong>题2：</strong></p>
-<p><img src="/img/Block题2.png" alt=""></p>
-<p>在这个栈上面通过 _ _block 修饰符所修饰的变量来指向当前对象，同时当前对象的成员变量 block 在这里进行创建，block 的表达式当中有使用到 self 的一个 var 成员变量，在这个是使用的是 blockSelf 而不是直接使用当前对象，然后对其进行调用</p>
-<p>答案：</p>
-<ul>
-<li><strong>在 MRC 下</strong>，不会产生循环应用</li>
-<li><strong>在ARC下</strong>，会产生循环引用，引起内存泄漏</li>
+<h2 id="Block-本质"><a href="#Block-本质" class="headerlink" title="Block 本质"></a>Block 本质</h2><p><img src="/img/Block本质.png" alt=""></p>
+<p>Block 实际上就是一个对象（结构体中有 isa 指针），<strong>这个对象封装了函数，以及函数执行的上下文</strong></p>
+<p>Block 在编译器编译之后会转换成：</p>
+<p><img src="/img/Block编译1.png" alt=""></p>
+<p><img src="/img/Block编译2.png" alt=""></p>
+<p>Block 在编译器编译之后，是一个高亮的结构体，第一参数是无类型的函数指针，第二参数是 Block 相关描述的结构，后面的参数是 Block 要使用的，比如这里是传进来 Block 的局部变量</p>
+<p>在这个高亮的结构体中有一个 impl 的结构体，在这个结构体中4个成员变量<br>第一个是 void 类型的 isa 指针，所以可以理解 block 是一个对象<br>还有一个关键的对象 FuncPtr，是无类型的函数指针，在 Block 的花括号中所定义的执行体，最终就会产生这样一个函数，然后 Block 同过函数指针来指向对应的函数实现</p>
+<h3 id="什么是-Block-调用？"><a href="#什么是-Block-调用？" class="headerlink" title="什么是 Block 调用？"></a>什么是 Block 调用？</h3><ul>
+<li>Block 调用即是<strong>函数的调用</strong></li>
 </ul>
-<p><img src="/img/ARC下的循环引用.png" alt=""></p>
-<p>比方说这个对象有一个成员变量 block，那么它持有 block，而这个 block 当中使用到了 <em> </em> block 修饰符所修饰的变量，所以 block 对象它持有了 <em> </em> block 变量，而 _ <em>block 变量它本身也是对原对象有一个强引用的持有的，因为 </em> _ block 变量它的指向是原来的对象，这种循环引用叫大环引用</p>
-<p><img src="/img/ARC下的循环引用答案.png" alt=""></p>
-<p>可以通过断环的方式解除</p>
-<p>具体的改写方案：（ARC下的解决方案）</p>
-<p><img src="/img/ARC下的解决方案.png" alt=""></p>
-<p>在 block 内部这个位置加上对 blockSelf 这个变量进行 nil 赋值操作就可以规避循环引用</p>
-<p>当调用这个 block 之后就会断开刚才所说的这个环然后就可以都得到内存的释放和销毁</p>
-<p>但是这种解决方案有一个弊端，就是说如果我们很长一段时间或者说永远都不会调用这个 block 的话，这个循环引用的环就会一直都存在</p>
+<p>首先对 block 进行强制类型转换，转后转后取它当中的成员变量 FuncPtr ，FuncPtr 是位于 Block 的结构体当中，通过函数指针取到对应的函数执行体，然后把对应的参数传进去</p>
+<h2 id="Block-截获变量"><a href="#Block-截获变量" class="headerlink" title="Block 截获变量"></a>Block 截获变量</h2><h3 id="思考一道题先"><a href="#思考一道题先" class="headerlink" title="思考一道题先"></a>思考一道题先</h3><p><img src="/img/滴滴笔试真题Block.png" alt=""></p>
+<p>阅读一下下这个题：<br>首先定义了一个 int 类型的局部变量值为 6<br>之后定义了一个入参和返回值均为 int 类型的 Block，它的表达式是把入参和局不变的乘积作为返回值<br>之后又把局部变量的值修改为 4<br>然后在控制台打印输入参数为 2 的 Block 调用结果</p>
+<p><strong>没错 是12，不小心被你看见了，那为什么是12呢，思考一下</strong></p>
+<p>关于截获变量就涉及被截获变量的类型，针对不同类型的变量，Block 对其截获的特点也是不一样的</p>
+<p>思考：关于 Block 的截获特性你是否有了解？  </p>
+<h3 id="特性"><a href="#特性" class="headerlink" title="特性"></a>特性</h3><p>局部变量（基本数据类型、对象类型）<br>静态局部变量<br>全局变量<br>静态全局变量</p>
+<p><img src="/img/Block截获变量特性.png" alt=""></p>
+<p>为什么是12：因为这是一个基本数据类型变量，在定义的时候就以值的方式传递到了 Block 所对应的结构体当中，而具体的函数调用是使用 Block 对应结构体当中的变量，所以输出的值是 12</p>
+<p><strong>理解以指针形式截获静态变量：</strong></p>
+<p><img src="/img/指针形式截获静态变量.png" alt=""></p>
+<p>因为在 Block 结构体当中是传递进或者说保存了静态局部变量的指针，那在具体调用的时候，通过这个指针来找到对应静态局部变量的值，静态局部变量被修改成4了，所以结果是8</p>
+<p><strong>思考：如果在 Block 当中想要对局部变量进行值的修改，怎么做 </strong></p>
+<p>用 <strong>_ _block</strong> 实现<br>详见<a href="https://xiaopengmonsters.github.io/2018/07/21/Block--_%20_block%20%E4%BF%AE%E9%A5%B0%E7%AC%A6/" target="_blank" rel="noopener">Block(二) – _ _block 修饰符</a></p>
 ]]></content>
       
         <categories>
@@ -200,6 +189,31 @@
 <li>在进行 pop 操作的时候会根据传入的哨兵对象来找到 pop 的最终位置，这个所谓的哨兵对象就是前面提到的 objc_autoreleasePoolPush 函数的返回值，实际上返回的就是栈当中对应的哨兵地址，pop 操作和 push 操作是一一对应的，那么要 pop 回哪个位置实际上是 pop 回它所指向的前一个哨兵对象</li>
 <li>然后给上次 push 操作之后所添加的对象依次发送 release 消息</li>
 <li>之后回退 next 指针到正确的位置</li>
+</ul>
+<p>通过图看 pop 操作的过程：</p>
+<p><img src="/img/pop操作的过程1.png" alt=""></p>
+<p>假如说 next 指针指向这个位置，然后此时调用了 AutoreleasePoolPage::pop 操作，那么实际上要给这个红括号包含的这些对象依次发送 release 消息</p>
+<p><img src="/img/pop操作的过程2.png" alt=""></p>
+<p>发送 release 之后，这些对象就会从当前栈中被清除掉</p>
+<p><img src="/img/pop操作的过程3.png" alt=""></p>
+<p>清除之后会把 next 指针指向一个正确的位置，这个就是 pop 的整个过程</p>
+<h2 id="自动释放池总结"><a href="#自动释放池总结" class="headerlink" title="自动释放池总结"></a>自动释放池总结</h2><p><img src="/img/自动释放池总结.png" alt=""></p>
+<ul>
+<li><p>在每一 RunLoop 的循环过程当中，都会在它将要结束的时候对前一次创建的 autoreleasepool 进行 pop 操作，同时会 push 进来一个新的 autoreleasePool，所以说在 viewDidLoad 方法中通过 [NSMutableArray array] 所创建的这个数组对象是在当次 RunLoop 将要结束的时候，然后调用 AutoreleasePoolPage::pop () 方法的时候，把对应的 array 对象调用它的 release 方法，然后对它进行释放 </p>
+</li>
+<li><p>关于AutoreleasePool 为何可以嵌套使用，实际上多次嵌套调用就是多次插入哨兵对象，比如说我们每次进行一个 @autoreleasepool{} 代码块的创建的时候，系统就会为我们进行哨兵对象的插入，然后完成新的 autoreleasepool 的创建，这个 autoreleasepool 的创建实际上创建了一个新的 page，假如说当前 page 还没有满的话就不用创建这个 page ，所以说我们所说的先创建的一个 autoreleasepool 对应的在底层实现就是插入了一个哨兵对象，所以当然是可以直接多次嵌套调用的</p>
+</li>
+<li><p>autoreleasePool 使用场景的问题：在什么场景下需要手动创建 autoreleasePool，比如说在 for 循坏当中 alloc 出大量的图片数据，图片数据对内存消耗非常大，需要在 for 循环内部创建一个 autoreleasepool ，每一次 for 循环都进行一次内存的释放来降低内存的峰值，防止一些内存消耗过大所导致的一些问题</p>
+</li>
+<li><p>实现原理：autoreleasePool实现原理就是以栈为节点，通过双向链接形式组合而成的一个数据结构</p>
+</li>
+</ul>
+<h3 id="补充"><a href="#补充" class="headerlink" title="补充"></a>补充</h3><p>ARC时代，系统自动管理自己的autoreleasepool，runloop就是iOS中的消息循环机制，当一个runloop结束时系统才会一次性清理掉被autorelease处理过的对象，其实本质上说是在本次runloop迭代结束时清理掉被本次迭代期间被放到autorelease pool中的对象的。至于何时runloop结束并没有固定的duration。</p>
+<p>方便是方便了，但是有些情况下，我们还是需要手动创建自动释放池，那么，什么时候呢？</p>
+<ul>
+<li>如果你正在编写不基于UI 框架的程序，比如命令行工具。</li>
+<li>如果你编写的循环创建了很多临时对象。<br>你可以在循环中使用自动释放池block，在下次迭代前处理这些对象。在循环中使用自动释放池block，有助于减少应用程序的内存占用。</li>
+<li>你生成了一个辅助线程。<br>一旦线程开始执行你必须自己创建自动释放池。否则，应用将泄漏对象。</li>
 </ul>
 ]]></content>
       
