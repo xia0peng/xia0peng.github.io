@@ -9,16 +9,89 @@ tags: [Objective-C]
 ---
 
 *******
-[RunLoop(一)--RunLoop 本质和事件循环机制](https://xiaopengmonsters.github.io/2018/07/16/Block--Block%20%E6%9C%AC%E8%B4%A8%E5%92%8C%E6%88%AA%E8%8E%B7%E5%8F%98%E9%87%8F/)
-[RunLoop(二)--RunLoop 数据结构](https://xiaopengmonsters.github.io/2018/07/16/Block--Block%20%E6%9C%AC%E8%B4%A8%E5%92%8C%E6%88%AA%E8%8E%B7%E5%8F%98%E9%87%8F/)
-[RunLoop(三)--RunLoop 与 NSTimer 相关问题](https://xiaopengmonsters.github.io/2018/07/16/Block--Block%20%E6%9C%AC%E8%B4%A8%E5%92%8C%E6%88%AA%E8%8E%B7%E5%8F%98%E9%87%8F/)
-[RunLoop(四)--RunLoop 与多线程相关问题](https://xiaopengmonsters.github.io/2018/07/16/Block--Block%20%E6%9C%AC%E8%B4%A8%E5%92%8C%E6%88%AA%E8%8E%B7%E5%8F%98%E9%87%8F/)
+[RunLoop(一)--RunLoop 本质和事件循环机制](https://xiaopengmonsters.github.io/2018/08/10/RunLoop(%E4%B8%80)--RunLoop%20%E6%9C%AC%E8%B4%A8%E5%92%8C%E4%BA%8B%E4%BB%B6%E5%BE%AA%E7%8E%AF%E6%9C%BA%E5%88%B6/)
+[RunLoop(二)--RunLoop 数据结构](https://xiaopengmonsters.github.io/2018/08/13/RunLoop(%E4%BA%8C)--RunLoop%20%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/)
+[RunLoop(三)--RunLoop 与 NSTimer 相关问题](https://xiaopengmonsters.github.io/2018/08/18/RunLoop(%E4%B8%89)--RunLoop%20%E4%B8%8E%20NSTimer%20%E7%9B%B8%E5%85%B3%E9%97%AE%E9%A2%98/)
+[RunLoop(四)--RunLoop 与多线程相关问题](https://xiaopengmonsters.github.io/2018/08/18/RunLoop(%E5%9B%9B)--RunLoop%20%E4%B8%8E%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%9B%B8%E5%85%B3%E9%97%AE%E9%A2%98/)
 [RunLoop[转]](https://xiaopengmonsters.github.io/2017/04/20/RunLoop/)
 ******
 
-### Block 的类型
+## RunLoop 本质
 
-impl.isa 就是标识当前 block 是哪种类型的
+### 什么是 RunLoop
 
-![](/img/Block的类型.png)
+RunLoop 是通过内部维护的**事件循环**来对**事件/消息进行管理**的一个对象
 
+* 没有消息需要处理时，休眠以避免资源占用
+
+* 有消息要处理时，立刻被唤醒
+
+### Event Loop
+
+* 没有消息需要处理时，休眠以避免资源占用
+
+![](/img/用户态内核态.png)
+
+* 有消息要处理时，立刻被唤醒
+
+![](/img/内核态用户态.png)
+
+**在没有消息处理时，休眠以避免资源占用，它的状态切换是怎么样的：**
+是从用户态通过系统调用进入内核态
+也就是当没有消息要处理时，进程或者说线程会进入一个休眠状态，而休眠状态的一个过渡相当于是把当前线程的控制权转移给了内核态
+
+当有消息需要处理时就会被立刻唤醒
+实际上就是有内核态到用户态的一个状态切换
+
+**用户态和内核态的介绍：**
+应用程序一般都是运行在用户态上面，也就是用户进程包括开发所使用的绝大多数的 API 都是针对于用户层面的
+而当发生了系统调用，需要使用一些关于操作系统，以及一些底层内核相关的一些指令或者 API 的话，就触发了系统调用，而有些系统调用就会发生状态空间的切换，这种切换空间或者说之所以区分用户态和内核态实际上是对计算机的一些资源调度，包括资源管理进行一个统一或者说一致性的操作，这样的话就可以避免或者说可以合理的安排资源调度，包括可以避免一些特殊的异常
+比如说在内核态往往有一些线性指令，中断，包括一些开机关机的一些操作，如果说每一个用户进程可以假想是一个 app，每一个 app 都可以促使当前用户手机关机或者说中断，这种场景是无法想象的，所以要有一个用户态到内核态上面的一个区分，同时内核态里面的一些内容可以对用户态当中的一些线程进行调度和管理包括进程间的一些通信
+
+### 什么是事件循环，事件循环的机制是怎样的？
+
+维护的事件循环可以用来不断的处理消息或者说事件，对他们进行管理
+同时当没有消息需要管理时用从用户态切换到内核态，由此可以用来进行当前线程的休眠，然后避免资源占用
+同时当有消息需要处理时，会发生从内核态到用户态的切换，然后当前的用户线程会被唤醒
+所以状态的切换才是 RunLoop 的关键点
+
+### 为什么引用程序不退出？main函数不退出？
+
+![](/img/main函数不退出.png)
+
+因为在 main 函数中会调用  UIApplicationMain 函数，在这个函数内部会启动一个运行循环，也就是 RunLoop
+RunLoop 是对事件循环的维护机制，可以不断的接收消息，比如说点击屏幕的事件，滑动列表，及处理网络请求的返回，那么接收消息之后对这个事件进行处理，处理完之后就会再进行等待，这个循环不是简单的循环，是发生了状态的切换
+
+等待 != 死循环 ，发生了状态的切换
+
+## RunLoop 事件循环机制
+
+在开发过程中调用的 NSRunLoop 的 run 系列的相关方法以及 CFRunLoop 的相关的 run 方法最终都会调用到 CFRunLoopRun() 函数
+
+![](/img/RunLoop事件循环机制.png)
+
+**事件循环的整体逻辑：**
+1. 在 RunLoop 启动之后首先会发出一条通知来告诉观察者当前 RunLoop 即将启动
+2. 之后 RunLoop 将要处理 Timer/Sources0 事件，发出通知
+3. 进入正式 Sources0 的处理
+4. 如果有 Sources1 需要处理，这个时候会用过一条 goto 语句来进行代码逻辑的跳转，来处理唤醒时收到的消息
+5. 如果没有 Source1要处理，此时线程将要休眠，同时也会发送通知给 Observe，然后就发生了用户带到内核态的切换
+6. 线程正式进入休眠，等待唤醒
+7. 之后线程被唤醒，也要发送一个通知，通知观察着说当前线程被唤醒了，然后处理唤醒时受到的消息，之后又会回到第二步
+
+
+**唤醒线路或者说 RunLoop 的三个条件：**
+1. 通过 Sources1 进行当前 RunLoop 的唤醒
+2. Timer 事件的回调
+3. 外部手动的唤醒
+
+
+**app 从启动到退出，这个过程当中系统都发生了什么？**
+
+调用了 main 函数之后，在 main 函数中会调用  UIApplicationMain 函数，在这个函数内部会启动一个主线程的 RunLoop，然后经过一系列的处理最终主线程的 RunLoop 处于休眠状态，如果说此时点击一个屏幕，会产生一个 Responder ，然后基于 Responder 最终会转成 Sources1，可以把主线程唤醒，运行然后处理，之后当把程序杀死的时候 RunLoop 就会退出，这个时候就会发出一个通知即将退出 RunLoop ，RunLoop 推出之后线程也就销毁掉了
+
+### RunLoop 的核心
+
+![](/img/RunLoop的核心.png)
+
+main 函数经过一系列的处理之后，内部最终会调用一个系统函数 mach_msg() ,于是就发生了一个系统调用，经过系统调用当前用户线程就把控制权转交核心态，然后 mach_msg() 在一定条件下会返回给调用方，触发返回的逻辑就是唤醒线程的逻辑，比如收到了一个 Sources1 或者 Timer 事件的回调，包括外部手动唤醒，就可以触发核心态到用户态的切换，那么当前app的主线程循环就会被唤醒，这就是 RunLoop 的核心   

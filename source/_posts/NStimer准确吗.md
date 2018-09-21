@@ -4,7 +4,7 @@ date: 2017-12-14 13:15:48
 
 description: NSTimer 不是一个基于真实时间的机制。NSTimer被激发需要满足三个条件。
 
-categories: 问题记录
+categories: [问题记录]
 tags: [Objective-C]
 toc: false 
 ---

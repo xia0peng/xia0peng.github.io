@@ -3,6 +3,227 @@
   
     
     <entry>
+      <title><![CDATA[RunLoop(四)--RunLoop 与多线程相关问题]]></title>
+      <url>/2018/08/18/RunLoop(%E5%9B%9B)--RunLoop%20%E4%B8%8E%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%9B%B8%E5%85%B3%E9%97%AE%E9%A2%98/</url>
+      <content type="html"><![CDATA[<hr>
+<p><a href="https://xiaopengmonsters.github.io/2018/08/10/RunLoop(%E4%B8%80" target="_blank" rel="noopener">RunLoop(一)–RunLoop 本质和事件循环机制</a>–RunLoop%20%E6%9C%AC%E8%B4%A8%E5%92%8C%E4%BA%8B%E4%BB%B6%E5%BE%AA%E7%8E%AF%E6%9C%BA%E5%88%B6/)<br><a href="https://xiaopengmonsters.github.io/2018/08/13/RunLoop(%E4%BA%8C" target="_blank" rel="noopener">RunLoop(二)–RunLoop 数据结构</a>–RunLoop%20%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/)<br><a href="https://xiaopengmonsters.github.io/2018/08/18/RunLoop(%E4%B8%89" target="_blank" rel="noopener">RunLoop(三)–RunLoop 与 NSTimer 相关问题</a>–RunLoop%20%E4%B8%8E%20NSTimer%20%E7%9B%B8%E5%85%B3%E9%97%AE%E9%A2%98/)<br><a href="https://xiaopengmonsters.github.io/2018/08/18/RunLoop(%E5%9B%9B" target="_blank" rel="noopener">RunLoop(四)–RunLoop 与多线程相关问题</a>–RunLoop%20%E4%B8%8E%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%9B%B8%E5%85%B3%E9%97%AE%E9%A2%98/)<br><a href="https://xiaopengmonsters.github.io/2017/04/20/RunLoop/" target="_blank" rel="noopener">RunLoop[转]</a></p>
+<hr>
+<h3 id="RunLoop-与-多线程"><a href="#RunLoop-与-多线程" class="headerlink" title="RunLoop 与 多线程"></a>RunLoop 与 多线程</h3><ul>
+<li><p>线程是和 RunLoop 一一对应的</p>
+</li>
+<li><p>自己创建的线程默认是没有开启 RunLoop 的</p>
+</li>
+</ul>
+<h3 id="怎样实现一个常驻线程"><a href="#怎样实现一个常驻线程" class="headerlink" title="怎样实现一个常驻线程"></a>怎样实现一个常驻线程</h3><ul>
+<li><p>为当前线程开启一个 RunLoop </p>
+</li>
+<li><p>向该 RunLoop 中添加一个 Port/Source 等维持 RunLoop 的事件循环</p>
+</li>
+<li><p>启动该 RunLoop</p>
+</li>
+</ul>
+<p>实现一个常驻线程的基本步骤：</p>
+<ol>
+<li>为当前线程开启一个 RunLoop ：NSRunLoop *runLoop = [NSRunLoop currentRunLoop];，因为获取当前 RunLoop 这个方法本身会查找如果当前线程没有 RunLoop 的话，会在系统的内部创建</li>
+<li>如果线程没有资源或者事件源要处理的话，默认情况下是不能维持事件循环的就会直接退出了，所以需要给他添加一个 Port/Source 来维持他的时间循环机制</li>
+<li>然后再调用 RunLoop 的 run 方法就可以实现一个常驻线程</li>
+</ol>
+<p>代码实现：</p>
+<p><img src="/img/常驻线程代码实现1.png" alt=""><br><img src="/img/常驻线程代码实现2.png" alt=""></p>
+<p><strong>滑动与图片刷新：</strong><br>当 tableview 的 cell 上有需要从网络获取的图片的时候，滚动 tableView，异步线程会去加载图片，加载完成后主线程就会设置 cell 的图片，但是会造成卡顿。可以让设置图片的任务在 CFRunLoopDefaultMode 下进行，当滚动 tableView 的时候，RunLoop 是在 UITrackingRunLoopMode 下进行，不去设置图片，而是当停止的时候，再去设置图片。</p>
+<figure class="highlight groovy"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">- (<span class="keyword">void</span>)viewDidLoad &#123;</span><br><span class="line">  [<span class="keyword">super</span> viewDidLoad];</span><br><span class="line">  <span class="comment">// 只在NSDefaultRunLoopMode下执行(刷新图片)</span></span><br><span class="line">  [self.myImageView <span class="string">performSelector:</span><span class="meta">@selector</span>(<span class="string">setImage:</span>) <span class="string">withObject:</span>[UIImage <span class="string">imageNamed:</span>@<span class="string">""</span>] <span class="string">afterDelay:</span>ti <span class="string">inModes:</span>@[NSDefaultRunLoopMode]];    </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
+      
+        <categories>
+            
+            <category> RunLoop </category>
+            
+        </categories>
+        
+        
+        <tags>
+            
+            <tag> Objective-C </tag>
+            
+        </tags>
+        
+    </entry>
+    
+    <entry>
+      <title><![CDATA[RunLoop(三)--RunLoop 与 NSTimer 相关问题]]></title>
+      <url>/2018/08/18/RunLoop(%E4%B8%89)--RunLoop%20%E4%B8%8E%20NSTimer%20%E7%9B%B8%E5%85%B3%E9%97%AE%E9%A2%98/</url>
+      <content type="html"><![CDATA[<hr>
+<p><a href="https://xiaopengmonsters.github.io/2018/08/10/RunLoop(%E4%B8%80" target="_blank" rel="noopener">RunLoop(一)–RunLoop 本质和事件循环机制</a>–RunLoop%20%E6%9C%AC%E8%B4%A8%E5%92%8C%E4%BA%8B%E4%BB%B6%E5%BE%AA%E7%8E%AF%E6%9C%BA%E5%88%B6/)<br><a href="https://xiaopengmonsters.github.io/2018/08/13/RunLoop(%E4%BA%8C" target="_blank" rel="noopener">RunLoop(二)–RunLoop 数据结构</a>–RunLoop%20%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/)<br><a href="https://xiaopengmonsters.github.io/2018/08/18/RunLoop(%E4%B8%89" target="_blank" rel="noopener">RunLoop(三)–RunLoop 与 NSTimer 相关问题</a>–RunLoop%20%E4%B8%8E%20NSTimer%20%E7%9B%B8%E5%85%B3%E9%97%AE%E9%A2%98/)<br><a href="https://xiaopengmonsters.github.io/2018/08/18/RunLoop(%E5%9B%9B" target="_blank" rel="noopener">RunLoop(四)–RunLoop 与多线程相关问题</a>–RunLoop%20%E4%B8%8E%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%9B%B8%E5%85%B3%E9%97%AE%E9%A2%98/)<br><a href="https://xiaopengmonsters.github.io/2017/04/20/RunLoop/" target="_blank" rel="noopener">RunLoop[转]</a><br><a href="https://xiaopengmonsters.github.io/2017/12/14/NStimer%E5%87%86%E7%A1%AE%E5%90%97/" target="_blank" rel="noopener">NStimer准确吗</a></p>
+<hr>
+<p>以前写过一遍关于 <a href="https://xiaopengmonsters.github.io/2017/12/14/NStimer%E5%87%86%E7%A1%AE%E5%90%97/" target="_blank" rel="noopener">NSTimer 准确性的文章</a>，可以看看哈</p>
+<p>滑动 TableView 的时候我们的定时器还会生效吗？</p>
+<p><img src="/img/定时器还会生效吗.png" alt=""></p>
+<p>我们的这个线程或者说当前 TableView 他正常情况下在 default 模式下，而当对 TableView 进行滑动的时候会发生 mode 的切换，会切换到 UITrackingRunLoopMode 上面</p>
+<p>前面讲过当把一个 Timer 或者 Sources，Observe 添加到某一个 mode 上之后，如果当前 RunLoop 是运行在另一个 mode 上，对应的这些 Timer 或者 Sources，Observe 是没有办法进行后续的处理和回调的，mode 有多个，解决的问题是 Timer，Sources 以及 Observe 的隔离，这种隔离也产生了一个问题</p>
+<p>就是：我们创建的 Timer 默认情况下是添加到当前 RunLoop 的 default 模式下，这个时候如果切换到 TrackingRunLoopMode 上面，定时器就不会在生效了</p>
+<p><img src="/img/CFRunLoopAddTimer.png" alt=""></p>
+<p>解决方案：可以通过 CFRunLoopAddTimer 函数把 NSTimer 添加到当前 RunLoop 的 commonMode 当中，前面讲过 commonMode 不是实际的 mode，它只是把一些 mode 打上一个 common 的标记，然后可以把某一个事件源比如说 timer 同步到多个 mode 当中</p>
+<p><strong>CFRunLoopAddTimer 内部实现：</strong></p>
+<p><img src="/img/CFRunLoopAddTimer内部实现1.png" alt=""><br><img src="/img/CFRunLoopAddTimer内部实现2.png" alt=""></p>
+<p>有三个参数第一个是 RunLoop，第二个是 timer，第三个是 mode 的名称<br>内部有一个判断：<br>如果当前的 mode 是 commonMode 的话，首先会提取 RunLoop 的 commonModes ，然后会判断 RunLoop 对应的  commonModeItems 是否为空，如果为空的话会重新创建集合，然后把 timer 添加到 commonModeItems 集合中，然后把 RunLoop 和 timer 封装成一个 context ，之后对这个集合当中的每一个元素都调用 CFRunLoopAddItemToCommonModes 函数</p>
+<p><strong>CFRunLoopAddItemToCommonModes 的实现</strong></p>
+<p><img src="/img/CFRunLoopAddItemToCommonModes的实现.png" alt=""></p>
+<p>在这个函数内部首先会取 当前 mode 的名称，然后再把对应的 RunLoop 和 item 取出来，接下来会根据当前 item 类型的判断来觉得调用 CFRunLoopAddSource 还是 CFRunLoopAddObserve 以及 CFRunLoopAddTimer</p>
+<p>循坏调用？实际上不是的<br>因为这个时候传进来的这个 modeName 已经从 commonMode 变成了被打上 commonMode 标记的具体的实际的一个 mode </p>
+<p>然后在 CFRunLoopAddTimer 当中如果传进来的是一个具体的 mode ，那么在下面的那一段代码逻辑中就会把 timer 最终添加到对应的 RunLoopMode 下面的 timer 数组当中，这样的话就可以实现通过把多个 mode 当中都添加同一个 timer</p>
+<p><img src="/img/CFRunLoopAddItemToCommonModes的实现2.png" alt=""></p>
+<p>因为调用 CFSetApplyFunction 这个函数 就是对于这个集合当中每一个元素都调用 CFRunLoopAddItemToCommonModes 函数，就可以实现把多个 timer 同步到多个 mode 下面 ，所以说可以通过 add timer 到一个 commonMode 上，可以实现把一个 timer 添加到多个 mode 上</p>
+<p>把一个 timer 添加到多个 mode 上面之后，UITrackingRunLoopMode 实际上也是被打上 common 标记的，就把这个 timer 同步到了 TrackingRunLoopMode 上面，这个时候列表继续滑动的时候，timer 也是能正常响应到时间的时间回调的</p>
+]]></content>
+      
+        <categories>
+            
+            <category> RunLoop </category>
+            
+        </categories>
+        
+        
+        <tags>
+            
+            <tag> Objective-C </tag>
+            
+        </tags>
+        
+    </entry>
+    
+    <entry>
+      <title><![CDATA[RunLoop(二)--RunLoop 数据结构]]></title>
+      <url>/2018/08/13/RunLoop(%E4%BA%8C)--RunLoop%20%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/</url>
+      <content type="html"><![CDATA[<hr>
+<p><a href="https://xiaopengmonsters.github.io/2018/08/10/RunLoop(%E4%B8%80" target="_blank" rel="noopener">RunLoop(一)–RunLoop 本质和事件循环机制</a>–RunLoop%20%E6%9C%AC%E8%B4%A8%E5%92%8C%E4%BA%8B%E4%BB%B6%E5%BE%AA%E7%8E%AF%E6%9C%BA%E5%88%B6/)<br><a href="https://xiaopengmonsters.github.io/2018/08/13/RunLoop(%E4%BA%8C" target="_blank" rel="noopener">RunLoop(二)–RunLoop 数据结构</a>–RunLoop%20%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/)<br><a href="https://xiaopengmonsters.github.io/2018/08/18/RunLoop(%E4%B8%89" target="_blank" rel="noopener">RunLoop(三)–RunLoop 与 NSTimer 相关问题</a>–RunLoop%20%E4%B8%8E%20NSTimer%20%E7%9B%B8%E5%85%B3%E9%97%AE%E9%A2%98/)<br><a href="https://xiaopengmonsters.github.io/2018/08/18/RunLoop(%E5%9B%9B" target="_blank" rel="noopener">RunLoop(四)–RunLoop 与多线程相关问题</a>–RunLoop%20%E4%B8%8E%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%9B%B8%E5%85%B3%E9%97%AE%E9%A2%98/)<br><a href="https://xiaopengmonsters.github.io/2017/04/20/RunLoop/" target="_blank" rel="noopener">RunLoop[转]</a></p>
+<hr>
+<p>在 OC 中实际提供了两个 RunLoop 的<br>一个是 NSRunLoop<br>一个是 CFRunLoop<br>NSRunLoop 是对 CFRunLoop 的封装，提供了一些面向对象的 API<br>NSRunLoop 是位于 Foundation 当中的，CFRunLoop 位于 CoreFoundation 当中的</p>
+<p>RunLoop 的数据结构主要有三个</p>
+<ul>
+<li>CFRunLoop</li>
+<li>CFRunLoopMode</li>
+<li>Source/Timer/Observer</li>
+</ul>
+<h3 id="CFRunLoop"><a href="#CFRunLoop" class="headerlink" title="CFRunLoop"></a>CFRunLoop</h3><p><img src="/img/CFRunLoop.png" alt=""></p>
+<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">struct</span> __CFRunLoop &#123;</span><br><span class="line">    <span class="built_in">CFMutableSetRef</span> _commonModes;     <span class="comment">// Set</span></span><br><span class="line">    <span class="built_in">CFMutableSetRef</span> _commonModeItems; <span class="comment">// Set</span></span><br><span class="line">    <span class="built_in">CFRunLoopModeRef</span> _currentMode;    <span class="comment">// Current Runloop Mode</span></span><br><span class="line">    <span class="built_in">CFMutableSetRef</span> _modes;           <span class="comment">// Set</span></span><br><span class="line">    ...</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<h3 id="CFRunLoopMode"><a href="#CFRunLoopMode" class="headerlink" title="CFRunLoopMode"></a>CFRunLoopMode</h3><p><img src="/img/CFRunLoopMode.png" alt=""></p>
+<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">struct</span> __CFRunLoopMode &#123;</span><br><span class="line">    <span class="built_in">CFStringRef</span> _name;            <span class="comment">// Mode Name, 例如 @"kCFRunLoopDefaultMode"</span></span><br><span class="line">    <span class="built_in">CFMutableSetRef</span> _sources0;    <span class="comment">// Set</span></span><br><span class="line">    <span class="built_in">CFMutableSetRef</span> _sources1;    <span class="comment">// Set</span></span><br><span class="line">    <span class="built_in">CFMutableArrayRef</span> _observers; <span class="comment">// Array</span></span><br><span class="line">    <span class="built_in">CFMutableArrayRef</span> _timers;    <span class="comment">// Array</span></span><br><span class="line">    ...</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<h3 id="CFRunLoopSource"><a href="#CFRunLoopSource" class="headerlink" title="CFRunLoopSource"></a>CFRunLoopSource</h3><p><img src="/img/CFRunLoopSource.png" alt=""></p>
+<p>在 CF 框架当中官方名称叫 CFRunLoopSource ，有两种 source0 和 source1<br>唤醒线程就是从内核态切换到用户态</p>
+<h3 id="CFRunLoopTimer"><a href="#CFRunLoopTimer" class="headerlink" title="CFRunLoopTimer"></a>CFRunLoopTimer</h3><p><img src="/img/CFRunLoopTimer.png" alt=""></p>
+<p>和平时所使用的 NSTimer 是具备免费桥转换的</p>
+<h3 id="CFRunLoopObserver"><a href="#CFRunLoopObserver" class="headerlink" title="CFRunLoopObserver"></a>CFRunLoopObserver</h3><p>观测时间点</p>
+<ul>
+<li>KCFRunLoopEntry</li>
+<li>KCFRunLoopBeforeTimers</li>
+<li>KCFRunLoopBeforeSources</li>
+<li>KCFRunLoopBeforeWaiting</li>
+<li>KCFRunLoopAfterWaiting</li>
+<li>KCFRunLoopExit</li>
+</ul>
+<p>可以通过注册一些 Observer 来实现对 RunLoop 的一些相关时间点的监测或者观察</p>
+<p>问：我们可以监听 RunLoop 哪些时间点？</p>
+<ul>
+<li>RunLoop 的入口事迹，当 RunLoop 准备启动的时候系统会给我们一个回调通知，这个通知掉 CFRunLoopEntry</li>
+<li>代表的含义：通知观察者 RunLoop 将要对 Timer 一些相关事件进行处理了</li>
+<li>代表将要处理一些 Source 事件</li>
+<li>通知对应观察者，当前 RunLoop 将要进入休眠状态，这个通知或者说观测点是非常重要的一个观测点，在 RunLoop 发送这个通知的时候，即将要发生用户态到内核态的切换</li>
+<li>这也是一个重要的观测点，这个通知发出的时机恰好是从内核态切换到用户态之后的不久之间</li>
+<li>代表 RunLoop 退出的通知</li>
+</ul>
+<h3 id="各个数据之间的关系"><a href="#各个数据之间的关系" class="headerlink" title="各个数据之间的关系"></a>各个数据之间的关系</h3><p><img src="/img/各个数据之间的关系.png" alt=""></p>
+<h3 id="RunLoop-的-Mode"><a href="#RunLoop-的-Mode" class="headerlink" title="RunLoop 的 Mode"></a>RunLoop 的 Mode</h3><p><img src="/img/RunLoop的Mode.png" alt=""></p>
+<p>一个 RunLoop 可以对应多个 mode，每个 mode 当中又可以有多个 Sources1，Timers，Observers<br>当 RunLoop 运行在某一个 mode 上的时候，比如说运行在 mode1 上面，这个时候如果 mode2 当中某一个 timer 事件或者 Observe 事件回调了，这个时候是没有办法接收对应 mode2 当中所回调过来的事件，这就 RunLoop 有多个 mode 的原因，实际上起到的就是一个屏蔽的效果，当运行到 mode1 上时，只能接收处理 mode1 当中的 Sources1，Timers，Observers</p>
+<p>思考：一个 Timer 要想同时加入到两个 mode 里面，需要怎么做？如果说这个 Timer 既想要它在 mode1 上可以正常运行，在每一个事件回调中做正常的处理，在 mode2 上也需要做相应的处理和事件的回调接收</p>
+<p>系统提供了添加到两个 mode 的机制的，这样可以保证当 RunLoop 发生 mode 切换的时候也可以让对应的 Timer 等事件正常处理接收</p>
+<p><strong>这实际上就涉及到了 CommonMode（CommonMode 的特殊性）：</strong></p>
+<p><img src="/img/CommonMode的特殊性.png" alt=""></p>
+<p>CommonMode 本身是有它的特殊性的，CommonMode 并不是一个实际存在的模式，在 OC 当中经常会通过 NSRunLoopCommonModes 字符串常量来表达 CommonMode<br>CommonMode 本身和 defaultMode 是有区分的，调用一个线程运行在 CommonMode 上面和运行在具体的 defaultMode 上是有区别的</p>
+<p>这里有个概念叫 “CommonModes”：一个 Mode 可以将自己标记为”Common”属性（通过将其 ModeName 添加到 RunLoop 的 “commonModes” 中）。每当 RunLoop 的内容发生变化时，RunLoop 都会自动将 _commonModeItems 里的 Source/Observer/Timer 同步到具有 “Common” 标记的所有Mode里。<br>应用场景举例：主线程的 RunLoop 里有两个预置的 Mode：kCFRunLoopDefaultMode 和 UITrackingRunLoopMode。这两个 Mode 都已经被标记为”Common”属性。DefaultMode 是 App 平时所处的状态，TrackingRunLoopMode 是追踪 ScrollView 滑动时的状态。当你创建一个 Timer 并加到 DefaultMode 时，Timer 会得到重复回调，但此时滑动一个TableView时，RunLoop 会将 mode 切换为 TrackingRunLoopMode，这时 Timer 就不会被回调，并且也不会影响到滑动操作。<br>有时你需要一个 Timer，在两个 Mode 中都能得到回调，一种办法就是将这个 Timer 分别加入这两个 Mode。还有一种方式，就是将 Timer 加入到顶层的 RunLoop 的 “commonModeItems” 中。”commonModeItems” 被 RunLoop 自动更新到所有具有”Common”属性的 Mode 里去。</p>
+]]></content>
+      
+        <categories>
+            
+            <category> RunLoop </category>
+            
+        </categories>
+        
+        
+        <tags>
+            
+            <tag> Objective-C </tag>
+            
+        </tags>
+        
+    </entry>
+    
+    <entry>
+      <title><![CDATA[RunLoop(一)--RunLoop 本质和事件循环机制]]></title>
+      <url>/2018/08/10/RunLoop(%E4%B8%80)--RunLoop%20%E6%9C%AC%E8%B4%A8%E5%92%8C%E4%BA%8B%E4%BB%B6%E5%BE%AA%E7%8E%AF%E6%9C%BA%E5%88%B6/</url>
+      <content type="html"><![CDATA[<hr>
+<p><a href="https://xiaopengmonsters.github.io/2018/08/10/RunLoop(%E4%B8%80" target="_blank" rel="noopener">RunLoop(一)–RunLoop 本质和事件循环机制</a>–RunLoop%20%E6%9C%AC%E8%B4%A8%E5%92%8C%E4%BA%8B%E4%BB%B6%E5%BE%AA%E7%8E%AF%E6%9C%BA%E5%88%B6/)<br><a href="https://xiaopengmonsters.github.io/2018/08/13/RunLoop(%E4%BA%8C" target="_blank" rel="noopener">RunLoop(二)–RunLoop 数据结构</a>–RunLoop%20%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/)<br><a href="https://xiaopengmonsters.github.io/2018/08/18/RunLoop(%E4%B8%89" target="_blank" rel="noopener">RunLoop(三)–RunLoop 与 NSTimer 相关问题</a>–RunLoop%20%E4%B8%8E%20NSTimer%20%E7%9B%B8%E5%85%B3%E9%97%AE%E9%A2%98/)<br><a href="https://xiaopengmonsters.github.io/2018/08/18/RunLoop(%E5%9B%9B" target="_blank" rel="noopener">RunLoop(四)–RunLoop 与多线程相关问题</a>–RunLoop%20%E4%B8%8E%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%9B%B8%E5%85%B3%E9%97%AE%E9%A2%98/)<br><a href="https://xiaopengmonsters.github.io/2017/04/20/RunLoop/" target="_blank" rel="noopener">RunLoop[转]</a></p>
+<hr>
+<h2 id="RunLoop-本质"><a href="#RunLoop-本质" class="headerlink" title="RunLoop 本质"></a>RunLoop 本质</h2><h3 id="什么是-RunLoop"><a href="#什么是-RunLoop" class="headerlink" title="什么是 RunLoop"></a>什么是 RunLoop</h3><p>RunLoop 是通过内部维护的<strong>事件循环</strong>来对<strong>事件/消息进行管理</strong>的一个对象</p>
+<ul>
+<li><p>没有消息需要处理时，休眠以避免资源占用</p>
+</li>
+<li><p>有消息要处理时，立刻被唤醒</p>
+</li>
+</ul>
+<h3 id="Event-Loop"><a href="#Event-Loop" class="headerlink" title="Event Loop"></a>Event Loop</h3><ul>
+<li>没有消息需要处理时，休眠以避免资源占用</li>
+</ul>
+<p><img src="/img/用户态内核态.png" alt=""></p>
+<ul>
+<li>有消息要处理时，立刻被唤醒</li>
+</ul>
+<p><img src="/img/内核态用户态.png" alt=""></p>
+<p><strong>在没有消息处理时，休眠以避免资源占用，它的状态切换是怎么样的：</strong><br>是从用户态通过系统调用进入内核态<br>也就是当没有消息要处理时，进程或者说线程会进入一个休眠状态，而休眠状态的一个过渡相当于是把当前线程的控制权转移给了内核态</p>
+<p>当有消息需要处理时就会被立刻唤醒<br>实际上就是有内核态到用户态的一个状态切换</p>
+<p><strong>用户态和内核态的介绍：</strong><br>应用程序一般都是运行在用户态上面，也就是用户进程包括开发所使用的绝大多数的 API 都是针对于用户层面的<br>而当发生了系统调用，需要使用一些关于操作系统，以及一些底层内核相关的一些指令或者 API 的话，就触发了系统调用，而有些系统调用就会发生状态空间的切换，这种切换空间或者说之所以区分用户态和内核态实际上是对计算机的一些资源调度，包括资源管理进行一个统一或者说一致性的操作，这样的话就可以避免或者说可以合理的安排资源调度，包括可以避免一些特殊的异常<br>比如说在内核态往往有一些线性指令，中断，包括一些开机关机的一些操作，如果说每一个用户进程可以假想是一个 app，每一个 app 都可以促使当前用户手机关机或者说中断，这种场景是无法想象的，所以要有一个用户态到内核态上面的一个区分，同时内核态里面的一些内容可以对用户态当中的一些线程进行调度和管理包括进程间的一些通信</p>
+<h3 id="什么是事件循环，事件循环的机制是怎样的？"><a href="#什么是事件循环，事件循环的机制是怎样的？" class="headerlink" title="什么是事件循环，事件循环的机制是怎样的？"></a>什么是事件循环，事件循环的机制是怎样的？</h3><p>维护的事件循环可以用来不断的处理消息或者说事件，对他们进行管理<br>同时当没有消息需要管理时用从用户态切换到内核态，由此可以用来进行当前线程的休眠，然后避免资源占用<br>同时当有消息需要处理时，会发生从内核态到用户态的切换，然后当前的用户线程会被唤醒<br>所以状态的切换才是 RunLoop 的关键点</p>
+<h3 id="为什么引用程序不退出？main函数不退出？"><a href="#为什么引用程序不退出？main函数不退出？" class="headerlink" title="为什么引用程序不退出？main函数不退出？"></a>为什么引用程序不退出？main函数不退出？</h3><p><img src="/img/main函数不退出.png" alt=""></p>
+<p>因为在 main 函数中会调用  UIApplicationMain 函数，在这个函数内部会启动一个运行循环，也就是 RunLoop<br>RunLoop 是对事件循环的维护机制，可以不断的接收消息，比如说点击屏幕的事件，滑动列表，及处理网络请求的返回，那么接收消息之后对这个事件进行处理，处理完之后就会再进行等待，这个循环不是简单的循环，是发生了状态的切换</p>
+<p>等待 != 死循环 ，发生了状态的切换</p>
+<h2 id="RunLoop-事件循环机制"><a href="#RunLoop-事件循环机制" class="headerlink" title="RunLoop 事件循环机制"></a>RunLoop 事件循环机制</h2><p>在开发过程中调用的 NSRunLoop 的 run 系列的相关方法以及 CFRunLoop 的相关的 run 方法最终都会调用到 CFRunLoopRun() 函数</p>
+<p><img src="/img/RunLoop事件循环机制.png" alt=""></p>
+<p><strong>事件循环的整体逻辑：</strong></p>
+<ol>
+<li>在 RunLoop 启动之后首先会发出一条通知来告诉观察者当前 RunLoop 即将启动</li>
+<li>之后 RunLoop 将要处理 Timer/Sources0 事件，发出通知</li>
+<li>进入正式 Sources0 的处理</li>
+<li>如果有 Sources1 需要处理，这个时候会用过一条 goto 语句来进行代码逻辑的跳转，来处理唤醒时收到的消息</li>
+<li>如果没有 Source1要处理，此时线程将要休眠，同时也会发送通知给 Observe，然后就发生了用户带到内核态的切换</li>
+<li>线程正式进入休眠，等待唤醒</li>
+<li>之后线程被唤醒，也要发送一个通知，通知观察着说当前线程被唤醒了，然后处理唤醒时受到的消息，之后又会回到第二步</li>
+</ol>
+<p><strong>唤醒线路或者说 RunLoop 的三个条件：</strong></p>
+<ol>
+<li>通过 Sources1 进行当前 RunLoop 的唤醒</li>
+<li>Timer 事件的回调</li>
+<li>外部手动的唤醒</li>
+</ol>
+<p><strong>app 从启动到退出，这个过程当中系统都发生了什么？</strong></p>
+<p>调用了 main 函数之后，在 main 函数中会调用  UIApplicationMain 函数，在这个函数内部会启动一个主线程的 RunLoop，然后经过一系列的处理最终主线程的 RunLoop 处于休眠状态，如果说此时点击一个屏幕，会产生一个 Responder ，然后基于 Responder 最终会转成 Sources1，可以把主线程唤醒，运行然后处理，之后当把程序杀死的时候 RunLoop 就会退出，这个时候就会发出一个通知即将退出 RunLoop ，RunLoop 推出之后线程也就销毁掉了</p>
+<h3 id="RunLoop-的核心"><a href="#RunLoop-的核心" class="headerlink" title="RunLoop 的核心"></a>RunLoop 的核心</h3><p><img src="/img/RunLoop的核心.png" alt=""></p>
+<p>main 函数经过一系列的处理之后，内部最终会调用一个系统函数 mach_msg() ,于是就发生了一个系统调用，经过系统调用当前用户线程就把控制权转交核心态，然后 mach_msg() 在一定条件下会返回给调用方，触发返回的逻辑就是唤醒线程的逻辑，比如收到了一个 Sources1 或者 Timer 事件的回调，包括外部手动唤醒，就可以触发核心态到用户态的切换，那么当前app的主线程循环就会被唤醒，这就是 RunLoop 的核心   </p>
+]]></content>
+      
+        <categories>
+            
+            <category> RunLoop </category>
+            
+        </categories>
+        
+        
+        <tags>
+            
+            <tag> Objective-C </tag>
+            
+        </tags>
+        
+    </entry>
+    
+    <entry>
       <title><![CDATA[Block(三)--Block 的内存管理]]></title>
       <url>/2018/08/06/Block--Block%20%E7%9A%84%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/</url>
       <content type="html"><![CDATA[<hr>
