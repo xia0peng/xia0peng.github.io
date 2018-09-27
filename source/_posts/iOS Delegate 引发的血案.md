@@ -1,8 +1,8 @@
 ---
 title: iOS Delegate 引发的血案
-date: 2018-2-18 17:23:33
+date: 2018-03-18 17:23:33
 
-description: 优化方案：异步渲染内容到图片和按需加载内容。
+description: 今天在项目重构过程中遇到一个很神奇的 bug，和同组的小伙伴一起研究了好久终于排查出问题所在，当然大家应该已经猜到了这个问题是因为 Delegate 的使用所导致的。接下来我先简单的将这个问题描述一下
 
 categories: 问题记录
 tags: [Objective-C]

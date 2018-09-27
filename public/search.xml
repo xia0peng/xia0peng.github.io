@@ -3,8 +3,62 @@
   
     
     <entry>
+      <title><![CDATA[iOS Delegate 引发的血案]]></title>
+      <url>/2018/03/18/iOS%20Delegate%20%E5%BC%95%E5%8F%91%E7%9A%84%E8%A1%80%E6%A1%88/</url>
+      <content type="html"><![CDATA[<p>今天在项目重构过程中遇到一个很神奇的 bug，和同组的小伙伴一起研究了好久终于排查出问题所在，当然大家应该已经猜到了这个问题是因为 Delegate 的使用所导致的。接下来我先简单的将这个问题描述一下</p>
+<h2 id="问题描述"><a href="#问题描述" class="headerlink" title="问题描述"></a>问题描述</h2><p><img src="/img/iOSDelegate引发的血案.png" alt=""></p>
+<ul>
+<li>矩形框1里面的每个标签对应一个 tableView, 该 tableView 都是由同一个类实例化所得。</li>
+<li>矩形框2是一个音频播放器，初始化是在 tableView 内的，UI在 tableViewCell 内实现的一个按钮。</li>
+<li>点击矩形框2内的按钮的时候，tableViewCell 通过代理通知 tableView 执行播放器播放操作并把相关数据字典dic传递给tableView。</li>
+<li>tableView 接收到代理后执行播放器的播放代理，同时会用到cell传递回来的数据</li>
+</ul>
+<p>操作描述</p>
+<ul>
+<li>进入到上图所示界面，默认选中的是全部标签，直接点击其余任意一个标签，然后再切换回到全部标签</li>
+<li>点击播放按钮，排查到 tableView 中 cell 的代理内数据dic值正常，播放器代理中数据dic值为空，导致无法播放</li>
+</ul>
+<h2 id="代码贴出来"><a href="#代码贴出来" class="headerlink" title="代码贴出来"></a>代码贴出来</h2><figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br></pre></td><td class="code"><pre><span class="line">YDLTalkTableView.m</span><br><span class="line"></span><br><span class="line"><span class="meta">#pragma mark - lify cycle</span></span><br><span class="line"><span class="meta">#pragma mark - DFPlayer为播放器</span></span><br><span class="line">- (<span class="keyword">instancetype</span>)initWithFrame:(<span class="built_in">CGRect</span>)frame style:(<span class="built_in">UITableViewStyle</span>)style withTab:(<span class="built_in">NSString</span> *)tab&#123;</span><br><span class="line">    <span class="keyword">self</span> = [<span class="keyword">super</span> initWithFrame:frame style:style];</span><br><span class="line">    <span class="keyword">if</span> (<span class="keyword">self</span>) &#123;</span><br><span class="line">        [DFPlayer shareInstance].category = DFPlayerAudioSessionCategorySoloAmbient;</span><br><span class="line">        [DFPlayer shareInstance].playMode = DFPlayerModeOnlyOnce;</span><br><span class="line">        [DFPlayer shareInstance].isObserveWWAN = <span class="literal">NO</span>;</span><br><span class="line">        [DFPlayer shareInstance].dataSource = <span class="keyword">self</span>;</span><br><span class="line">        [DFPlayer shareInstance].delegate = <span class="keyword">self</span>;</span><br><span class="line">        [[DFPlayer shareInstance] df_audioPause];</span><br><span class="line">        <span class="keyword">self</span>.delegate = <span class="keyword">self</span>;</span><br><span class="line">        <span class="keyword">self</span>.dataSource  = <span class="keyword">self</span>;</span><br><span class="line">        <span class="keyword">if</span> (@available(iOS <span class="number">11.0</span>, *)) &#123;</span><br><span class="line">            <span class="built_in">UIScrollView</span>.appearance.contentInsetAdjustmentBehavior = <span class="built_in">UIScrollViewContentInsetAdjustmentNever</span>;</span><br><span class="line">            <span class="keyword">self</span>.estimatedRowHeight = <span class="number">0</span>;</span><br><span class="line">            <span class="keyword">self</span>.estimatedSectionHeaderHeight = <span class="number">0</span>;</span><br><span class="line">            <span class="keyword">self</span>.estimatedSectionFooterHeight = <span class="number">0</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">// Fallback on earlier versions</span></span><br><span class="line">        &#125;</span><br><span class="line">        [<span class="keyword">self</span> registerClass:[YDLTalkTableViewCell <span class="keyword">class</span>] forCellReuseIdentifier:<span class="built_in">NSStringFromClass</span>([YDLTalkTableViewCell <span class="keyword">class</span>])];</span><br><span class="line">        [<span class="keyword">self</span> setSeparatorStyle:<span class="built_in">UITableViewCellSeparatorStyleNone</span>];</span><br><span class="line">        [<span class="keyword">self</span> setBackgroundColor:kBackGroundColor];</span><br><span class="line">        <span class="keyword">self</span>.tableFooterView = [<span class="built_in">UIView</span> new];</span><br><span class="line">        __<span class="keyword">weak</span> <span class="keyword">typeof</span>(<span class="keyword">self</span>) weakSelf = <span class="keyword">self</span>;</span><br><span class="line">        [<span class="keyword">self</span> loadHeaderRefreshWithHeaderRefreshingBlock:^&#123;</span><br><span class="line">            [weakSelf onHeader];</span><br><span class="line">        &#125;];</span><br><span class="line">        [<span class="keyword">self</span> loadFooterRefreshWithFootRefreshingBlock:^&#123;</span><br><span class="line">            [weakSelf onFooter];</span><br><span class="line">        &#125;];</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">self</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#pragma mark - cell的代理方法</span></span><br><span class="line">-(<span class="keyword">void</span>)bofangTalk:(<span class="built_in">NSDictionary</span>*)dict&#123;</span><br><span class="line">    _dict = dict;<span class="comment">//此处dict值为正常的</span></span><br><span class="line">    [MBProgressHUD showError:_dict[<span class="string">@"expert_name"</span>] toView:_viewController.view];</span><br><span class="line">    [[DFPlayer shareInstance] df_reloadData];</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#pragma mark - DFPLayer dataSource</span></span><br><span class="line">- (<span class="built_in">NSArray</span>&lt;DFPlayerModel *&gt; *)df_playerModelArray&#123;</span><br><span class="line">    <span class="built_in">NSLog</span>(<span class="string">@"%@"</span>, _dict);<span class="comment">//此处dict值为nil</span></span><br><span class="line">    <span class="built_in">NSMutableArray</span> *_df_ModelArray;</span><br><span class="line">    <span class="keyword">return</span> _df_ModelArray;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="问题解决"><a href="#问题解决" class="headerlink" title="问题解决"></a>问题解决</h2><p>我们都知道代理是属于一对一的关系，请看下面这段代码：</p>
+<figure class="highlight elm"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">- (instance<span class="keyword">type</span>)initWithFrame:(<span class="type">CGRect</span>)frame style:(<span class="type">UITableViewStyle</span>)style withTab:(<span class="type">NSString</span> *)tab&#123;</span><br><span class="line">    self = [super initWithFrame:frame style:style];</span><br><span class="line">    if (self) &#123;</span><br><span class="line">        [<span class="type">DFPlayer</span> shareInstance].dataSource = self;</span><br><span class="line">        [<span class="type">DFPlayer</span> shareInstance].delegate = self;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>当我们进入这个页面的时候首先创建的是“全部”标签下对应的tableView,这个时候播放器的代理是“全部”标签对应的tableView，当我们点击任意其他一个标签的时候，播放器的代理就会变成该标签对应的tableView，然后等我们回到“全部”标签的时候，是不会调用上面方法的，所以这个时候播放器的代理其实还是我们上次点击的标签所对应的tableView。所以我们就可以理解为什么执行cell的delegate的时候dict的值是正常的，而到执行播放器代理的时候dict的值就变为了nil了。</p>
+<p>为什么会出现这种情况呢，有些人可能会说了：我平时这么写也没发现有问题啊。这就是我们这个案例特殊的一点，因为我们的播放器是通过单例来创建的，也就是说全局只会存在着一个实例，那么他的代理也应该是只对应一个的，以最后一个设置的为准，如果在上面的方法中我们的播放器通过[[DFPlayer alloc] init]来创建的话，那就没有问题了</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>遇到问题很兴奋，解决问题更兴奋。</p>
+<p>首先遇到 bug 不要慌，是时候展现自己真正的技术了（简单的排查思路）</p>
+<ul>
+<li>解决问题一定要思路清晰，先根据 bug 现象判断出问题的大体可能，然后验证你的假想（我的项目播放是利用代理来回传进行播放的，所以大致定位到 delegate 出现相关问题）</li>
+<li>然后用自己的经验和掌握的技能（断点、排除法、逐步分析法等等）找到出现问题的具体代码行（一顿操作操作排查到 tableView 中 cell 的代理内数据dic值正常，播放器代理中数据dic值为空，导致无法播放）</li>
+<li>最后分析导致问题的可能，逐步更正（这里是有必要联系场景分析的）</li>
+</ul>
+<p>默认选中的是全部标签，直接点击其余任意一个标签，然后再切换回到全部标签出现问题，综上</p>
+<ul>
+<li>你可能就会想到，标签切换回来的时候代理失效了（想的不错，当然需要一些时间）</li>
+<li>思考代理为什么会失效？（找到关键了，让代理不失效就ok了）</li>
+<li>思考怎么让代理不失效？（又找到关键了，发现在标签切换的时候代理指向别处了，结合代理一对一的特性）</li>
+<li>思考怎么将代理重新指向当前控制器（哎呀，又想到关键了，在播放事件中重新改变代理的指向而不是之前的在初始化时指向代理）</li>
+<li>问题解决，完美</li>
+</ul>
+<p>以此篇记录关于 delegate（设置单例的代理）引发的 bug</p>
+]]></content>
+      
+        <categories>
+            
+            <category> 问题记录 </category>
+            
+        </categories>
+        
+        
+        <tags>
+            
+            <tag> Objective-C </tag>
+            
+        </tags>
+        
+    </entry>
+    
+    <entry>
       <title><![CDATA[RunLoop(四)--RunLoop 与多线程相关问题]]></title>
-      <url>/2018/08/18/RunLoop%20%E4%B8%8E%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%9B%B8%E5%85%B3%E9%97%AE%E9%A2%98/</url>
+      <url>/2017/12/20/RunLoop%20%E4%B8%8E%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%9B%B8%E5%85%B3%E9%97%AE%E9%A2%98/</url>
       <content type="html"><![CDATA[<hr>
 <p><a href="https://xiaopengmonsters.github.io/2018/08/10/RunLoop%20%E6%9C%AC%E8%B4%A8%E5%92%8C%E4%BA%8B%E4%BB%B6%E5%BE%AA%E7%8E%AF%E6%9C%BA%E5%88%B6" target="_blank" rel="noopener">RunLoop(一)–RunLoop 本质和事件循环机制</a><br><a href="https://xiaopengmonsters.github.io/2018/08/13/RunLoop%20%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" target="_blank" rel="noopener">RunLoop(二)–RunLoop 数据结构</a><br><a href="https://xiaopengmonsters.github.io/2018/08/18/RunLoop%20%E4%B8%8E%20NSTimer%20%E7%9B%B8%E5%85%B3%E9%97%AE%E9%A2%98/" target="_blank" rel="noopener">RunLoop(三)–RunLoop 与 NSTimer 相关问题</a><br><a href="https://xiaopengmonsters.github.io/2018/08/18/RunLoop%20%E4%B8%8E%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%9B%B8%E5%85%B3%E9%97%AE%E9%A2%98/" target="_blank" rel="noopener">RunLoop(四)–RunLoop 与多线程相关问题</a><br><a href="https://xiaopengmonsters.github.io/2017/04/20/RunLoop/" target="_blank" rel="noopener">RunLoop[转]</a></p>
 <hr>
@@ -50,7 +104,7 @@
     
     <entry>
       <title><![CDATA[RunLoop(三)--RunLoop 与 NSTimer 相关问题]]></title>
-      <url>/2018/08/18/RunLoop%20%E4%B8%8E%20NSTimer%20%E7%9B%B8%E5%85%B3%E9%97%AE%E9%A2%98/</url>
+      <url>/2017/12/20/RunLoop%20%E4%B8%8E%20NSTimer%20%E7%9B%B8%E5%85%B3%E9%97%AE%E9%A2%98/</url>
       <content type="html"><![CDATA[<hr>
 <p><a href="https://xiaopengmonsters.github.io/2018/08/10/RunLoop%20%E6%9C%AC%E8%B4%A8%E5%92%8C%E4%BA%8B%E4%BB%B6%E5%BE%AA%E7%8E%AF%E6%9C%BA%E5%88%B6" target="_blank" rel="noopener">RunLoop(一)–RunLoop 本质和事件循环机制</a><br><a href="https://xiaopengmonsters.github.io/2018/08/13/RunLoop%20%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" target="_blank" rel="noopener">RunLoop(二)–RunLoop 数据结构</a><br><a href="https://xiaopengmonsters.github.io/2018/08/18/RunLoop%20%E4%B8%8E%20NSTimer%20%E7%9B%B8%E5%85%B3%E9%97%AE%E9%A2%98/" target="_blank" rel="noopener">RunLoop(三)–RunLoop 与 NSTimer 相关问题</a><br><a href="https://xiaopengmonsters.github.io/2018/08/18/RunLoop%20%E4%B8%8E%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%9B%B8%E5%85%B3%E9%97%AE%E9%A2%98/" target="_blank" rel="noopener">RunLoop(四)–RunLoop 与多线程相关问题</a><br><a href="https://xiaopengmonsters.github.io/2017/04/20/RunLoop/" target="_blank" rel="noopener">RunLoop[转]</a><br><a href="https://xiaopengmonsters.github.io/2017/12/14/NStimer%E5%87%86%E7%A1%AE%E5%90%97/" target="_blank" rel="noopener">NStimer准确吗</a></p>
 <hr>
@@ -92,7 +146,7 @@
     
     <entry>
       <title><![CDATA[RunLoop(二)--RunLoop 数据结构]]></title>
-      <url>/2018/08/13/RunLoop%20%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/</url>
+      <url>/2017/12/05/RunLoop%20%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/</url>
       <content type="html"><![CDATA[<hr>
 <p><a href="https://xiaopengmonsters.github.io/2018/08/10/RunLoop%20%E6%9C%AC%E8%B4%A8%E5%92%8C%E4%BA%8B%E4%BB%B6%E5%BE%AA%E7%8E%AF%E6%9C%BA%E5%88%B6" target="_blank" rel="noopener">RunLoop(一)–RunLoop 本质和事件循环机制</a><br><a href="https://xiaopengmonsters.github.io/2018/08/13/RunLoop%20%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" target="_blank" rel="noopener">RunLoop(二)–RunLoop 数据结构</a><br><a href="https://xiaopengmonsters.github.io/2018/08/18/RunLoop%20%E4%B8%8E%20NSTimer%20%E7%9B%B8%E5%85%B3%E9%97%AE%E9%A2%98/" target="_blank" rel="noopener">RunLoop(三)–RunLoop 与 NSTimer 相关问题</a><br><a href="https://xiaopengmonsters.github.io/2018/08/18/RunLoop%20%E4%B8%8E%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%9B%B8%E5%85%B3%E9%97%AE%E9%A2%98/" target="_blank" rel="noopener">RunLoop(四)–RunLoop 与多线程相关问题</a><br><a href="https://xiaopengmonsters.github.io/2017/04/20/RunLoop/" target="_blank" rel="noopener">RunLoop[转]</a></p>
 <hr>
@@ -158,7 +212,7 @@
     
     <entry>
       <title><![CDATA[RunLoop(一)--RunLoop 本质和事件循环机制]]></title>
-      <url>/2018/08/10/RunLoop%20%E6%9C%AC%E8%B4%A8%E5%92%8C%E4%BA%8B%E4%BB%B6%E5%BE%AA%E7%8E%AF%E6%9C%BA%E5%88%B6/</url>
+      <url>/2017/12/01/RunLoop%20%E6%9C%AC%E8%B4%A8%E5%92%8C%E4%BA%8B%E4%BB%B6%E5%BE%AA%E7%8E%AF%E6%9C%BA%E5%88%B6/</url>
       <content type="html"><![CDATA[<hr>
 <p><a href="https://xiaopengmonsters.github.io/2018/08/10/RunLoop%20%E6%9C%AC%E8%B4%A8%E5%92%8C%E4%BA%8B%E4%BB%B6%E5%BE%AA%E7%8E%AF%E6%9C%BA%E5%88%B6" target="_blank" rel="noopener">RunLoop(一)–RunLoop 本质和事件循环机制</a><br><a href="https://xiaopengmonsters.github.io/2018/08/13/RunLoop%20%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" target="_blank" rel="noopener">RunLoop(二)–RunLoop 数据结构</a><br><a href="https://xiaopengmonsters.github.io/2018/08/18/RunLoop%20%E4%B8%8E%20NSTimer%20%E7%9B%B8%E5%85%B3%E9%97%AE%E9%A2%98/" target="_blank" rel="noopener">RunLoop(三)–RunLoop 与 NSTimer 相关问题</a><br><a href="https://xiaopengmonsters.github.io/2018/08/18/RunLoop%20%E4%B8%8E%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%9B%B8%E5%85%B3%E9%97%AE%E9%A2%98/" target="_blank" rel="noopener">RunLoop(四)–RunLoop 与多线程相关问题</a><br><a href="https://xiaopengmonsters.github.io/2017/04/20/RunLoop/" target="_blank" rel="noopener">RunLoop[转]</a></p>
 <hr>
@@ -224,141 +278,8 @@
     </entry>
     
     <entry>
-      <title><![CDATA[Block(三)--Block 的内存管理]]></title>
-      <url>/2018/08/06/Block--Block%20%E7%9A%84%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/</url>
-      <content type="html"><![CDATA[<hr>
-<p><a href="https://xiaopengmonsters.github.io/2018/07/16/Block--Block%20%E6%9C%AC%E8%B4%A8%E5%92%8C%E6%88%AA%E8%8E%B7%E5%8F%98%E9%87%8F/" target="_blank" rel="noopener">Block(一) – Block 本质和截获变量</a><br><a href="https://xiaopengmonsters.github.io/2018/07/21/Block--_%20_block%20%E4%BF%AE%E9%A5%B0%E7%AC%A6/" target="_blank" rel="noopener">Block(二) – _ _block 修饰符</a><br><a href="https://xiaopengmonsters.github.io/2018/08/06/Block--Block%20%E7%9A%84%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/" target="_blank" rel="noopener">Block(三) – Block 的内存管理</a><br><a href="https://xiaopengmonsters.github.io/2018/06/05/Block--Block%20%E7%9A%84%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">Block(四) – Block 的循环引用</a></p>
-<hr>
-<h3 id="Block-的类型"><a href="#Block-的类型" class="headerlink" title="Block 的类型"></a>Block 的类型</h3><p>impl.isa 就是标识当前 block 是哪种类型的</p>
-<p><img src="/img/Block的类型.png" alt=""></p>
-<h3 id="不同-Block-的内存分配"><a href="#不同-Block-的内存分配" class="headerlink" title="不同 Block 的内存分配"></a>不同 Block 的内存分配</h3><p><img src="/img/不同Block的内存分配.png" alt=""></p>
-<h3 id="Block-的-copy-操作"><a href="#Block-的-copy-操作" class="headerlink" title="Block 的 copy 操作"></a>Block 的 copy 操作</h3><p><img src="/img/Block的copy操作.png" alt=""></p>
-<p>比如声明一个对象的成员变量是一个 block，而在栈上面去创建这个 block 同时赋值给成员变量 block，如果成员变量 block 没有使用 copy 关键字的话，比如使用的是 assigin，那么当具体通过成员变量去访问对应 block 的话，可能就由于栈所对应的函数退出之后，在内存当中就销毁掉了，这个时候再继续访问会因为内存崩溃</p>
-<h3 id="栈上-Block-的销毁"><a href="#栈上-Block-的销毁" class="headerlink" title="栈上 Block 的销毁"></a>栈上 Block 的销毁</h3><p><img src="/img/栈上Block的销毁.png" alt=""></p>
-<p>比如说在栈上有一个 杠杠block 变量，同时也有一个 Block，在变量的作用域结束之后或者说栈上的函数退出之后，那么关于栈上的 杠杠block 变量以及 Block 都会随之而销魂<br>由于 杠杠block 修饰的变量已经变成了对象，所以在这里也提到了关于 _ _block 变量在变量作用域结束之后一个销魂的逻辑</p>
-<h3 id="栈上-Block-的-copy"><a href="#栈上-Block-的-copy" class="headerlink" title="栈上 Block 的 copy"></a>栈上 Block 的 copy</h3><p><img src="/img/栈上Block的copy.png" alt=""></p>
-<p>比方说在栈上有一个 Block，Block 当中它使用到了一个 杠杠block 变量（可能是我们对这个变量赋值了，所以声明为 杠杠block 类型），当对栈上的 Block 进行 copy 操作之后，会在堆上产生一个和原来栈上面的一模一样的对应的 Block 和对应的 _ _block 变量，但是他们是分占两块内存空间，左侧是在栈上，右侧是在堆上，那么随着变量作用域的结束，栈上的 Block 会随之而销毁</p>
-<p>思考：当对栈上的 Block 进行 copy 操作之后，在 MRC 环境下，是否会引起内存泄露？<br>答案：是肯定的，假如进行了 copy 操作之后同时堆上的 Block 没有额外其他成员变量指向他，那么就和 alloc 出一个对象没有调用对应的 release 的效果是一样的，产生内存泄露</p>
-<h3 id="栈上-block-变量的-copy"><a href="#栈上-block-变量的-copy" class="headerlink" title="栈上 _ _block 变量的 copy"></a>栈上 _ _block 变量的 copy</h3><p><img src="/img/栈上杠杠block变量的copy.png" alt=""></p>
-<p>比如说在栈上有一个  <strong>_ _block</strong> 变量，在这个  <strong>_ _block</strong> 变量中有一个  <strong>_ _forwarding</strong> 指针，在上一节讲过，在栈上 <strong>_ _forwarding</strong> 指针是指向它自身的<br>在对 <strong>_ _block</strong> 变量进行 copy 操作之后，会在堆上面产生一个 <strong>_ _block</strong> 变量和 栈上的是完全一致的，但是是两块内存空间</p>
-<p>此时还有额外的变化在里面，可以回答 <strong>_ _forwarding</strong> 这个指针所存在的意义：<br>比方说对栈上的 <strong>_ _block</strong> 进行 copy 操作之后，栈上的  <strong>_ _forwarding</strong> 指针实际上指向的是堆上面的  <strong>_ _block</strong> 变量，而堆上面的  <strong>_ _forwarding</strong> 指针指向是其自身</p>
-<p>所以说在对 multiplier 这个整型值进行值的改变的时候使用的其实转换出来的都是同一行代码，而对不论是栈上还是堆上的 Block 操作都是生效的，来具体解释一下：<br>比如说现在在栈上面去对某一个  <strong>_ _block</strong> 变量进行修改，这个时候如果对栈上的  <strong>_ _block</strong> 变量已经做过 copy 操作之后，实际上修改的不是栈上的  <strong>_ _block</strong> 变量对应的值，而是通过栈上  <strong>_ _block</strong> 变量里面的  <strong>_ _forwarding</strong> 指针找到堆上面的  <strong>_ _block</strong> 变量，然后对堆上面对应的变量 （multiplier ）值进行复制<br>那么同样的如果说 <strong>_ _block</strong> 变量由于被成员变量的一个 Block 所持有的话，当我们在另个一个方法或者说其他的地方去调用这个对应的 <strong>_ _block</strong> 变量的修改的情况下，那实际上是通过自身的 <strong>_ _forwarding</strong> 指向来修改的</p>
-<p>经过编译器编译，无论这行代码出现在栈上的调用还是出现在堆上的调用，实际上最终所修改的值都是对堆上的 <strong>_ _block</strong> 变量进行修改的，说的这个大前提是栈上的 <strong>_ _block</strong> 变量经过了 copy 在堆上面产生了一致的 <strong>_ _block</strong> 变量<br>如果说对栈上的 <strong>_ _block</strong> 变量没有做 copy 操作，那么这行代码所修改的就是栈上的 <strong>_ _block</strong> 变量</p>
-<h3 id="forwarding-总结"><a href="#forwarding-总结" class="headerlink" title="_ _forwarding 总结"></a>_ _forwarding 总结</h3><p><img src="/img/forwarding总结.png" alt=""></p>
-<p>在左侧有一个代码段，声明了一个 <strong>_ _block</strong> 修饰的整型变量，初始化值是10<br>然后定义了一个 <strong>_blk</strong> 这么一个当前对象的成员变量形式的 Block，然后在栈上进行创建<br>之后在修改 multiplier 的值为 6<br>调用一个执行 Block 的一个同一个实例的另一个方法</p>
-<p>讲解：在栈上创建了这个局部变量，通过 <strong>_ _block</strong> 修饰符修饰之后，这个局部变量就变成了一个对象，所以说这一步 multiplier = 6 的赋值实际上不是对变量进行赋值，而是通过 multiplier 这个对象的 <strong>_ _forwording</strong> 指针对其成员变量 multiplier 进行赋值<br>然后 <strong>_blk</strong> 这个变量实际上是某一对象的成员变量，当对它进行赋值操作的时候，会对它进行一个 copy，这个 block 就会跑到堆上面去或者说在堆上面有一个副本，然后再进行Block的执行</p>
-<p>如果说这个 <strong>_blk</strong> 没进行 copy 操作，那么修改的就是栈上 <strong>_ _block</strong> 变量，如果对这个 <strong>_blk</strong> 进行了 copy 操作，这个行代码 multiplier = 6 所代表的含义就是通过栈上的 multiplier 的 <strong>_ _forwording</strong> 指针找到堆上面所对应的 multiplier 的copy 副本，然后对其副本进行值的修改改成6</p>
-<p>右边调用了堆上的 block ，入参是 4，在调用的时候，在 Block 的执行体中所使用到的 multiplier <strong>_ _block</strong> 变量实际上使用的是堆上面的 <strong>_block</strong> 变量，在这里经过copy之后是对堆上面变量的修改，所以结构是4*6=24</p>
-<h3 id="forwarding-存在的意义"><a href="#forwarding-存在的意义" class="headerlink" title="_ _forwarding 存在的意义"></a>_ _forwarding 存在的意义</h3><ul>
-<li><strong>不论在任何内存位置，都可以顺利的访问同一个 _ _blcok 变量</strong></li>
-</ul>
-<p>如果没有对 <strong>_ _block</strong> 变量进行 copy 的话，那么实际上操作的就是栈上的 <strong>_ _block</strong> 变量<br>如果发生了 copy 之后，无论是在栈上还是在堆上，对 <strong>_ _block</strong> 的修改或者说赋值操作都是操作的堆上面的 <strong>_ _block</strong> 变量，同时栈上关于 <strong>_ _block</strong> 变量的使用也都是使用的堆上的 <strong>_ _block</strong> 变量</p>
-]]></content>
-      
-        <categories>
-            
-            <category> Block </category>
-            
-        </categories>
-        
-        
-        <tags>
-            
-            <tag> Objective-C </tag>
-            
-        </tags>
-        
-    </entry>
-    
-    <entry>
-      <title><![CDATA[Block(二)--_ _block 修饰符]]></title>
-      <url>/2018/07/21/Block--_%20_block%20%E4%BF%AE%E9%A5%B0%E7%AC%A6/</url>
-      <content type="html"><![CDATA[<hr>
-<p><a href="https://xiaopengmonsters.github.io/2018/07/16/Block--Block%20%E6%9C%AC%E8%B4%A8%E5%92%8C%E6%88%AA%E8%8E%B7%E5%8F%98%E9%87%8F/" target="_blank" rel="noopener">Block(一) – Block 本质和截获变量</a><br><a href="https://xiaopengmonsters.github.io/2018/07/21/Block--_%20_block%20%E4%BF%AE%E9%A5%B0%E7%AC%A6/" target="_blank" rel="noopener">Block(二) – _ _block 修饰符</a><br><a href="https://xiaopengmonsters.github.io/2018/08/06/Block--Block%20%E7%9A%84%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/" target="_blank" rel="noopener">Block(三) – Block 的内存管理</a><br><a href="https://xiaopengmonsters.github.io/2018/06/05/Block--Block%20%E7%9A%84%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">Block(四) – Block 的循环引用</a></p>
-<hr>
-<h3 id="什么场景下需要使用-block-修饰符"><a href="#什么场景下需要使用-block-修饰符" class="headerlink" title="什么场景下需要使用 _ _block 修饰符"></a>什么场景下需要使用 _ _block 修饰符</h3><p><img src="/img/__block修饰符使用场景.png" alt=""></p>
-<h3 id="思考两个题先"><a href="#思考两个题先" class="headerlink" title="思考两个题先"></a>思考两个题先</h3><p><img src="/img/笔试题的坑1.png" alt=""></p>
-<p><img src="/img/笔试题的坑2.png" alt=""></p>
-<h3 id="对变量进行赋值时，-block-具体使用特点"><a href="#对变量进行赋值时，-block-具体使用特点" class="headerlink" title="对变量进行赋值时，_ _block 具体使用特点"></a>对变量进行赋值时，_ _block 具体使用特点</h3><p><img src="/img/__block具体使用特点.png" alt=""></p>
-<p>因为 block 的截获变量特性，对于全局变量和静态全局变量不涉及截获操作，那么就是对全局变量和静态全局变量直接使用的，所以对其值进行操作的时候是不需要 杠杠block 修饰的<br>对于静态局部变量是通过指针形式来使用操作对应的变量的，那实际上操作的就是 block 外部的变量，所以说这种场景下也是不需要 _ _block 修饰的</p>
-<h3 id="Block-笔试题"><a href="#Block-笔试题" class="headerlink" title="_ _Block 笔试题"></a>_ _Block 笔试题</h3><p><img src="/img/__Block笔试题.png" alt=""></p>
-<h3 id="block-修饰符的机制和原理："><a href="#block-修饰符的机制和原理：" class="headerlink" title="_ _block 修饰符的机制和原理："></a>_ _block 修饰符的机制和原理：</h3><p><strong>_ _block 修饰的变量变成了对象</strong></p>
-<p><img src="/img/变量变成了对象.png" alt=""></p>
-<p>加了 杠杠block 修饰符之后，在编译后，这个整型变量最终就变成了一个结构体<br>结构体中有 void* 类型的 isa 指针，所以可以收 杠杠block 修饰符修饰的变量最终变成了对象<br>之后有一个指向同类型的指针 _ _forwarding<br>最后有一个成员变量 ，就是在函数当中所定义的局部变量</p>
-<p>比如说在 Block 定义后面对局部变量进行 4 的赋值操作，实际上这个变量已经变成了一个对象，是通过这个对象当中的 _ _forwarding 指针去找到对应的一个对象，然后对其成员变量进行值的赋值</p>
-<p>在方法当中对局部变量的赋值就改写成了对于他的对象通过 _ _forwarding 指针来修改对应的变量值</p>
-<p><strong>栈上的 _ _forwarding 指向它自身的</strong></p>
-<p>栈上的 block 进行局部变量的赋值，实际上 杠杠forwarding 指针指向的仍是自己所以修改的变量就是栈上 _ _block 它内部的一个成员值</p>
-<h3 id="留一个思考问题"><a href="#留一个思考问题" class="headerlink" title="留一个思考问题"></a>留一个思考问题</h3><p><img src="/img/杠杠forwarding用来干什么的.png" alt=""></p>
-<p>思考是很有意思的事 ~ ~ ~</p>
-<p>_ _forwarding 的内容详见<a href="https://xiaopengmonsters.github.io/2018/08/06/Block--Block%20%E7%9A%84%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/" target="_blank" rel="noopener">Block(三) – Block 的内存管理</a></p>
-]]></content>
-      
-        <categories>
-            
-            <category> Block </category>
-            
-        </categories>
-        
-        
-        <tags>
-            
-            <tag> Objective-C </tag>
-            
-        </tags>
-        
-    </entry>
-    
-    <entry>
-      <title><![CDATA[Block(一)--Block 本质和截获变量]]></title>
-      <url>/2018/07/16/Block--Block%20%E6%9C%AC%E8%B4%A8%E5%92%8C%E6%88%AA%E8%8E%B7%E5%8F%98%E9%87%8F/</url>
-      <content type="html"><![CDATA[<hr>
-<p><a href="https://xiaopengmonsters.github.io/2018/07/16/Block--Block%20%E6%9C%AC%E8%B4%A8%E5%92%8C%E6%88%AA%E8%8E%B7%E5%8F%98%E9%87%8F/" target="_blank" rel="noopener">Block(一) – Block 本质和截获变量</a><br><a href="https://xiaopengmonsters.github.io/2018/07/21/Block--_%20_block%20%E4%BF%AE%E9%A5%B0%E7%AC%A6/" target="_blank" rel="noopener">Block(二) – _ _block 修饰符</a><br><a href="https://xiaopengmonsters.github.io/2018/08/06/Block--Block%20%E7%9A%84%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/" target="_blank" rel="noopener">Block(三) – Block 的内存管理</a><br><a href="https://xiaopengmonsters.github.io/2018/06/05/Block--Block%20%E7%9A%84%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">Block(四) – Block 的循环引用</a></p>
-<hr>
-<h2 id="Block-本质"><a href="#Block-本质" class="headerlink" title="Block 本质"></a>Block 本质</h2><p><img src="/img/Block本质.png" alt=""></p>
-<p>Block 实际上就是一个对象（结构体中有 isa 指针），<strong>这个对象封装了函数，以及函数执行的上下文</strong></p>
-<p>Block 在编译器编译之后会转换成：</p>
-<p><img src="/img/Block编译1.png" alt=""></p>
-<p><img src="/img/Block编译2.png" alt=""></p>
-<p>Block 在编译器编译之后，是一个高亮的结构体，第一参数是无类型的函数指针，第二参数是 Block 相关描述的结构，后面的参数是 Block 要使用的，比如这里是传进来 Block 的局部变量</p>
-<p>在这个高亮的结构体中有一个 impl 的结构体，在这个结构体中4个成员变量<br>第一个是 void 类型的 isa 指针，所以可以理解 block 是一个对象<br>还有一个关键的对象 FuncPtr，是无类型的函数指针，在 Block 的花括号中所定义的执行体，最终就会产生这样一个函数，然后 Block 同过函数指针来指向对应的函数实现</p>
-<h3 id="什么是-Block-调用？"><a href="#什么是-Block-调用？" class="headerlink" title="什么是 Block 调用？"></a>什么是 Block 调用？</h3><ul>
-<li>Block 调用即是<strong>函数的调用</strong></li>
-</ul>
-<p>首先对 block 进行强制类型转换，转后转后取它当中的成员变量 FuncPtr ，FuncPtr 是位于 Block 的结构体当中，通过函数指针取到对应的函数执行体，然后把对应的参数传进去</p>
-<h2 id="Block-截获变量"><a href="#Block-截获变量" class="headerlink" title="Block 截获变量"></a>Block 截获变量</h2><h3 id="思考一道题先"><a href="#思考一道题先" class="headerlink" title="思考一道题先"></a>思考一道题先</h3><p><img src="/img/滴滴笔试真题Block.png" alt=""></p>
-<p>阅读一下下这个题：<br>首先定义了一个 int 类型的局部变量值为 6<br>之后定义了一个入参和返回值均为 int 类型的 Block，它的表达式是把入参和局不变的乘积作为返回值<br>之后又把局部变量的值修改为 4<br>然后在控制台打印输入参数为 2 的 Block 调用结果</p>
-<p><strong>没错 是12，不小心被你看见了，那为什么是12呢，思考一下</strong></p>
-<p>关于截获变量就涉及被截获变量的类型，针对不同类型的变量，Block 对其截获的特点也是不一样的</p>
-<p>思考：关于 Block 的截获特性你是否有了解？  </p>
-<h3 id="特性"><a href="#特性" class="headerlink" title="特性"></a>特性</h3><p>局部变量（基本数据类型、对象类型）<br>静态局部变量<br>全局变量<br>静态全局变量</p>
-<p><img src="/img/Block截获变量特性.png" alt=""></p>
-<p>为什么是12：因为这是一个基本数据类型变量，在定义的时候就以值的方式传递到了 Block 所对应的结构体当中，而具体的函数调用是使用 Block 对应结构体当中的变量，所以输出的值是 12</p>
-<p><strong>理解以指针形式截获静态变量：</strong></p>
-<p><img src="/img/指针形式截获静态变量.png" alt=""></p>
-<p>因为在 Block 结构体当中是传递进或者说保存了静态局部变量的指针，那在具体调用的时候，通过这个指针来找到对应静态局部变量的值，静态局部变量被修改成4了，所以结果是8</p>
-<p><strong>思考：如果在 Block 当中想要对局部变量进行值的修改，怎么做 </strong></p>
-<p>用 <strong>_ _block</strong> 实现<br>详见<a href="https://xiaopengmonsters.github.io/2018/07/21/Block--_%20_block%20%E4%BF%AE%E9%A5%B0%E7%AC%A6/" target="_blank" rel="noopener">Block(二) – _ _block 修饰符</a></p>
-]]></content>
-      
-        <categories>
-            
-            <category> Block </category>
-            
-        </categories>
-        
-        
-        <tags>
-            
-            <tag> Objective-C </tag>
-            
-        </tags>
-        
-    </entry>
-    
-    <entry>
       <title><![CDATA[内存管理(五)--自动释放池]]></title>
-      <url>/2018/07/08/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E8%87%AA%E5%8A%A8%E9%87%8A%E6%94%BE%E6%B1%A0/</url>
+      <url>/2017/11/18/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E8%87%AA%E5%8A%A8%E9%87%8A%E6%94%BE%E6%B1%A0/</url>
       <content type="html"><![CDATA[<hr>
 <p><a href="https://xiaopengmonsters.github.io/2018/06/13/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E6%96%B9%E6%A1%88/" target="_blank" rel="noopener">内存管理(一) – 内存管理方案</a><br><a href="https://xiaopengmonsters.github.io/2018/06/18/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E6%9C%89%E5%85%B3%E6%95%A3%E5%88%97%E8%A1%A8%E5%AE%9E%E7%8E%B0%E7%9A%84%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E6%96%B9%E6%B3%95%E7%9A%84%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" target="_blank" rel="noopener">内存管理(二) – 有关散列表实现的内存管理方法的数据结构</a><br><a href="https://xiaopengmonsters.github.io/2018/06/21/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BC%95%E7%94%A8%E8%AE%A1%E6%95%B0%E7%AE%A1%E7%90%86/" target="_blank" rel="noopener">内存管理(三) – 引用计数管理</a><br><a href="https://xiaopengmonsters.github.io/2018/06/28/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BC%B1%E5%BC%95%E7%94%A8%E7%AE%A1%E7%90%86/" target="_blank" rel="noopener">内存管理(四) – 弱引用管理</a><br><a href="https://xiaopengmonsters.github.io/2018/07/08/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E8%87%AA%E5%8A%A8%E9%87%8A%E6%94%BE%E6%B1%A0/" target="_blank" rel="noopener">内存管理(五) – 自动释放池</a><br><a href="https://xiaopengmonsters.github.io/2018/06/03/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">内存管理(六) – 循环引用</a><br><a href="https://xiaopengmonsters.github.io/2018/06/05/Block--Block%20%E7%9A%84%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">Block(四) – Block 的循环引用</a></p>
 <hr>
@@ -455,7 +376,7 @@
     
     <entry>
       <title><![CDATA[内存管理(四)--弱引用管理]]></title>
-      <url>/2018/06/28/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BC%B1%E5%BC%95%E7%94%A8%E7%AE%A1%E7%90%86/</url>
+      <url>/2017/11/07/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BC%B1%E5%BC%95%E7%94%A8%E7%AE%A1%E7%90%86/</url>
       <content type="html"><![CDATA[<hr>
 <p><a href="https://xiaopengmonsters.github.io/2018/06/13/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E6%96%B9%E6%A1%88/" target="_blank" rel="noopener">内存管理(一) – 内存管理方案</a><br><a href="https://xiaopengmonsters.github.io/2018/06/18/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E6%9C%89%E5%85%B3%E6%95%A3%E5%88%97%E8%A1%A8%E5%AE%9E%E7%8E%B0%E7%9A%84%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E6%96%B9%E6%B3%95%E7%9A%84%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" target="_blank" rel="noopener">内存管理(二) – 有关散列表实现的内存管理方法的数据结构</a><br><a href="https://xiaopengmonsters.github.io/2018/06/21/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BC%95%E7%94%A8%E8%AE%A1%E6%95%B0%E7%AE%A1%E7%90%86/" target="_blank" rel="noopener">内存管理(三) – 引用计数管理</a><br><a href="https://xiaopengmonsters.github.io/2018/06/28/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BC%B1%E5%BC%95%E7%94%A8%E7%AE%A1%E7%90%86/" target="_blank" rel="noopener">内存管理(四) – 弱引用管理</a><br><a href="https://xiaopengmonsters.github.io/2018/07/08/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E8%87%AA%E5%8A%A8%E9%87%8A%E6%94%BE%E6%B1%A0/" target="_blank" rel="noopener">内存管理(五) – 自动释放池</a><br><a href="https://xiaopengmonsters.github.io/2018/06/03/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">内存管理(六) – 循环引用</a><br><a href="https://xiaopengmonsters.github.io/2018/06/05/Block--Block%20%E7%9A%84%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">Block(四) – Block 的循环引用</a></p>
 <hr>
@@ -499,7 +420,7 @@
     
     <entry>
       <title><![CDATA[内存管理(三)--引用计数管理]]></title>
-      <url>/2018/06/21/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BC%95%E7%94%A8%E8%AE%A1%E6%95%B0%E7%AE%A1%E7%90%86/</url>
+      <url>/2017/10/21/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BC%95%E7%94%A8%E8%AE%A1%E6%95%B0%E7%AE%A1%E7%90%86/</url>
       <content type="html"><![CDATA[<hr>
 <p><a href="https://xiaopengmonsters.github.io/2018/06/13/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E6%96%B9%E6%A1%88/" target="_blank" rel="noopener">内存管理(一) – 内存管理方案</a><br><a href="https://xiaopengmonsters.github.io/2018/06/18/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E6%9C%89%E5%85%B3%E6%95%A3%E5%88%97%E8%A1%A8%E5%AE%9E%E7%8E%B0%E7%9A%84%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E6%96%B9%E6%B3%95%E7%9A%84%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" target="_blank" rel="noopener">内存管理(二) – 有关散列表实现的内存管理方法的数据结构</a><br><a href="https://xiaopengmonsters.github.io/2018/06/21/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BC%95%E7%94%A8%E8%AE%A1%E6%95%B0%E7%AE%A1%E7%90%86/" target="_blank" rel="noopener">内存管理(三) – 引用计数管理</a><br><a href="https://xiaopengmonsters.github.io/2018/06/28/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BC%B1%E5%BC%95%E7%94%A8%E7%AE%A1%E7%90%86/" target="_blank" rel="noopener">内存管理(四) – 弱引用管理</a><br><a href="https://xiaopengmonsters.github.io/2018/07/08/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E8%87%AA%E5%8A%A8%E9%87%8A%E6%94%BE%E6%B1%A0/" target="_blank" rel="noopener">内存管理(五) – 自动释放池</a><br><a href="https://xiaopengmonsters.github.io/2018/06/03/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">内存管理(六) – 循环引用</a><br><a href="https://xiaopengmonsters.github.io/2018/06/05/Block--Block%20%E7%9A%84%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">Block(四) – Block 的循环引用</a></p>
 <hr>
@@ -615,7 +536,7 @@
     
     <entry>
       <title><![CDATA[内存管理(二)--有关散列表实现的内存管理方法的数据结构]]></title>
-      <url>/2018/06/18/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E6%9C%89%E5%85%B3%E6%95%A3%E5%88%97%E8%A1%A8%E5%AE%9E%E7%8E%B0%E7%9A%84%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E6%96%B9%E6%B3%95%E7%9A%84%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/</url>
+      <url>/2017/10/14/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E6%9C%89%E5%85%B3%E6%95%A3%E5%88%97%E8%A1%A8%E5%AE%9E%E7%8E%B0%E7%9A%84%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E6%96%B9%E6%B3%95%E7%9A%84%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/</url>
       <content type="html"><![CDATA[<hr>
 <p><a href="https://xiaopengmonsters.github.io/2018/06/13/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E6%96%B9%E6%A1%88/" target="_blank" rel="noopener">内存管理(一) – 内存管理方案</a><br><a href="https://xiaopengmonsters.github.io/2018/06/18/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E6%9C%89%E5%85%B3%E6%95%A3%E5%88%97%E8%A1%A8%E5%AE%9E%E7%8E%B0%E7%9A%84%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E6%96%B9%E6%B3%95%E7%9A%84%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" target="_blank" rel="noopener">内存管理(二) – 有关散列表实现的内存管理方法的数据结构</a><br><a href="https://xiaopengmonsters.github.io/2018/06/21/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BC%95%E7%94%A8%E8%AE%A1%E6%95%B0%E7%AE%A1%E7%90%86/" target="_blank" rel="noopener">内存管理(三) – 引用计数管理</a><br><a href="https://xiaopengmonsters.github.io/2018/06/28/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BC%B1%E5%BC%95%E7%94%A8%E7%AE%A1%E7%90%86/" target="_blank" rel="noopener">内存管理(四) – 弱引用管理</a><br><a href="https://xiaopengmonsters.github.io/2018/07/08/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E8%87%AA%E5%8A%A8%E9%87%8A%E6%94%BE%E6%B1%A0/" target="_blank" rel="noopener">内存管理(五) – 自动释放池</a><br><a href="https://xiaopengmonsters.github.io/2018/06/03/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">内存管理(六) – 循环引用</a><br><a href="https://xiaopengmonsters.github.io/2018/06/05/Block--Block%20%E7%9A%84%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">Block(四) – Block 的循环引用</a></p>
 <hr>
@@ -669,7 +590,7 @@
     
     <entry>
       <title><![CDATA[内存管理(一)--内存管理方案]]></title>
-      <url>/2018/06/13/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E6%96%B9%E6%A1%88/</url>
+      <url>/2017/10/09/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E6%96%B9%E6%A1%88/</url>
       <content type="html"><![CDATA[<hr>
 <p><a href="https://xiaopengmonsters.github.io/2018/06/13/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E6%96%B9%E6%A1%88/" target="_blank" rel="noopener">内存管理(一) – 内存管理方案</a><br><a href="https://xiaopengmonsters.github.io/2018/06/18/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E6%9C%89%E5%85%B3%E6%95%A3%E5%88%97%E8%A1%A8%E5%AE%9E%E7%8E%B0%E7%9A%84%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E6%96%B9%E6%B3%95%E7%9A%84%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" target="_blank" rel="noopener">内存管理(二) – 有关散列表实现的内存管理方法的数据结构</a><br><a href="https://xiaopengmonsters.github.io/2018/06/21/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BC%95%E7%94%A8%E8%AE%A1%E6%95%B0%E7%AE%A1%E7%90%86/" target="_blank" rel="noopener">内存管理(三) – 引用计数管理</a><br><a href="https://xiaopengmonsters.github.io/2018/06/28/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BC%B1%E5%BC%95%E7%94%A8%E7%AE%A1%E7%90%86/" target="_blank" rel="noopener">内存管理(四) – 弱引用管理</a><br><a href="https://xiaopengmonsters.github.io/2018/07/08/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E8%87%AA%E5%8A%A8%E9%87%8A%E6%94%BE%E6%B1%A0/" target="_blank" rel="noopener">内存管理(五) – 自动释放池</a><br><a href="https://xiaopengmonsters.github.io/2018/06/03/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">内存管理(六) – 循环引用</a><br><a href="https://xiaopengmonsters.github.io/2018/06/05/Block--Block%20%E7%9A%84%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">Block(四) – Block 的循环引用</a></p>
 <hr>
@@ -765,7 +686,7 @@
     
     <entry>
       <title><![CDATA[Block(四)--Block 的循环引用]]></title>
-      <url>/2018/06/05/Block--Block%20%E7%9A%84%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/</url>
+      <url>/2017/09/15/Block--Block%20%E7%9A%84%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/</url>
       <content type="html"><![CDATA[<hr>
 <p><a href="https://xiaopengmonsters.github.io/2018/07/16/Block--Block%20%E6%9C%AC%E8%B4%A8%E5%92%8C%E6%88%AA%E8%8E%B7%E5%8F%98%E9%87%8F/" target="_blank" rel="noopener">Block(一) – Block 本质和截获变量</a><br><a href="https://xiaopengmonsters.github.io/2018/07/21/Block--_%20_block%20%E4%BF%AE%E9%A5%B0%E7%AC%A6/" target="_blank" rel="noopener">Block(二) – _ _block 修饰符</a><br><a href="https://xiaopengmonsters.github.io/2018/08/06/Block--Block%20%E7%9A%84%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/" target="_blank" rel="noopener">Block(三) – Block 的内存管理</a><br><a href="https://xiaopengmonsters.github.io/2018/06/05/Block--Block%20%E7%9A%84%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">Block(四) – Block 的循环引用</a></p>
 <hr>
@@ -812,8 +733,55 @@
     </entry>
     
     <entry>
+      <title><![CDATA[Block(三)--Block 的内存管理]]></title>
+      <url>/2017/08/29/Block--Block%20%E7%9A%84%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/</url>
+      <content type="html"><![CDATA[<hr>
+<p><a href="https://xiaopengmonsters.github.io/2018/07/16/Block--Block%20%E6%9C%AC%E8%B4%A8%E5%92%8C%E6%88%AA%E8%8E%B7%E5%8F%98%E9%87%8F/" target="_blank" rel="noopener">Block(一) – Block 本质和截获变量</a><br><a href="https://xiaopengmonsters.github.io/2018/07/21/Block--_%20_block%20%E4%BF%AE%E9%A5%B0%E7%AC%A6/" target="_blank" rel="noopener">Block(二) – _ _block 修饰符</a><br><a href="https://xiaopengmonsters.github.io/2018/08/06/Block--Block%20%E7%9A%84%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/" target="_blank" rel="noopener">Block(三) – Block 的内存管理</a><br><a href="https://xiaopengmonsters.github.io/2018/06/05/Block--Block%20%E7%9A%84%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">Block(四) – Block 的循环引用</a></p>
+<hr>
+<h3 id="Block-的类型"><a href="#Block-的类型" class="headerlink" title="Block 的类型"></a>Block 的类型</h3><p>impl.isa 就是标识当前 block 是哪种类型的</p>
+<p><img src="/img/Block的类型.png" alt=""></p>
+<h3 id="不同-Block-的内存分配"><a href="#不同-Block-的内存分配" class="headerlink" title="不同 Block 的内存分配"></a>不同 Block 的内存分配</h3><p><img src="/img/不同Block的内存分配.png" alt=""></p>
+<h3 id="Block-的-copy-操作"><a href="#Block-的-copy-操作" class="headerlink" title="Block 的 copy 操作"></a>Block 的 copy 操作</h3><p><img src="/img/Block的copy操作.png" alt=""></p>
+<p>比如声明一个对象的成员变量是一个 block，而在栈上面去创建这个 block 同时赋值给成员变量 block，如果成员变量 block 没有使用 copy 关键字的话，比如使用的是 assigin，那么当具体通过成员变量去访问对应 block 的话，可能就由于栈所对应的函数退出之后，在内存当中就销毁掉了，这个时候再继续访问会因为内存崩溃</p>
+<h3 id="栈上-Block-的销毁"><a href="#栈上-Block-的销毁" class="headerlink" title="栈上 Block 的销毁"></a>栈上 Block 的销毁</h3><p><img src="/img/栈上Block的销毁.png" alt=""></p>
+<p>比如说在栈上有一个 杠杠block 变量，同时也有一个 Block，在变量的作用域结束之后或者说栈上的函数退出之后，那么关于栈上的 杠杠block 变量以及 Block 都会随之而销魂<br>由于 杠杠block 修饰的变量已经变成了对象，所以在这里也提到了关于 _ _block 变量在变量作用域结束之后一个销魂的逻辑</p>
+<h3 id="栈上-Block-的-copy"><a href="#栈上-Block-的-copy" class="headerlink" title="栈上 Block 的 copy"></a>栈上 Block 的 copy</h3><p><img src="/img/栈上Block的copy.png" alt=""></p>
+<p>比方说在栈上有一个 Block，Block 当中它使用到了一个 杠杠block 变量（可能是我们对这个变量赋值了，所以声明为 杠杠block 类型），当对栈上的 Block 进行 copy 操作之后，会在堆上产生一个和原来栈上面的一模一样的对应的 Block 和对应的 _ _block 变量，但是他们是分占两块内存空间，左侧是在栈上，右侧是在堆上，那么随着变量作用域的结束，栈上的 Block 会随之而销毁</p>
+<p>思考：当对栈上的 Block 进行 copy 操作之后，在 MRC 环境下，是否会引起内存泄露？<br>答案：是肯定的，假如进行了 copy 操作之后同时堆上的 Block 没有额外其他成员变量指向他，那么就和 alloc 出一个对象没有调用对应的 release 的效果是一样的，产生内存泄露</p>
+<h3 id="栈上-block-变量的-copy"><a href="#栈上-block-变量的-copy" class="headerlink" title="栈上 _ _block 变量的 copy"></a>栈上 _ _block 变量的 copy</h3><p><img src="/img/栈上杠杠block变量的copy.png" alt=""></p>
+<p>比如说在栈上有一个  <strong>_ _block</strong> 变量，在这个  <strong>_ _block</strong> 变量中有一个  <strong>_ _forwarding</strong> 指针，在上一节讲过，在栈上 <strong>_ _forwarding</strong> 指针是指向它自身的<br>在对 <strong>_ _block</strong> 变量进行 copy 操作之后，会在堆上面产生一个 <strong>_ _block</strong> 变量和 栈上的是完全一致的，但是是两块内存空间</p>
+<p>此时还有额外的变化在里面，可以回答 <strong>_ _forwarding</strong> 这个指针所存在的意义：<br>比方说对栈上的 <strong>_ _block</strong> 进行 copy 操作之后，栈上的  <strong>_ _forwarding</strong> 指针实际上指向的是堆上面的  <strong>_ _block</strong> 变量，而堆上面的  <strong>_ _forwarding</strong> 指针指向是其自身</p>
+<p>所以说在对 multiplier 这个整型值进行值的改变的时候使用的其实转换出来的都是同一行代码，而对不论是栈上还是堆上的 Block 操作都是生效的，来具体解释一下：<br>比如说现在在栈上面去对某一个  <strong>_ _block</strong> 变量进行修改，这个时候如果对栈上的  <strong>_ _block</strong> 变量已经做过 copy 操作之后，实际上修改的不是栈上的  <strong>_ _block</strong> 变量对应的值，而是通过栈上  <strong>_ _block</strong> 变量里面的  <strong>_ _forwarding</strong> 指针找到堆上面的  <strong>_ _block</strong> 变量，然后对堆上面对应的变量 （multiplier ）值进行复制<br>那么同样的如果说 <strong>_ _block</strong> 变量由于被成员变量的一个 Block 所持有的话，当我们在另个一个方法或者说其他的地方去调用这个对应的 <strong>_ _block</strong> 变量的修改的情况下，那实际上是通过自身的 <strong>_ _forwarding</strong> 指向来修改的</p>
+<p>经过编译器编译，无论这行代码出现在栈上的调用还是出现在堆上的调用，实际上最终所修改的值都是对堆上的 <strong>_ _block</strong> 变量进行修改的，说的这个大前提是栈上的 <strong>_ _block</strong> 变量经过了 copy 在堆上面产生了一致的 <strong>_ _block</strong> 变量<br>如果说对栈上的 <strong>_ _block</strong> 变量没有做 copy 操作，那么这行代码所修改的就是栈上的 <strong>_ _block</strong> 变量</p>
+<h3 id="forwarding-总结"><a href="#forwarding-总结" class="headerlink" title="_ _forwarding 总结"></a>_ _forwarding 总结</h3><p><img src="/img/forwarding总结.png" alt=""></p>
+<p>在左侧有一个代码段，声明了一个 <strong>_ _block</strong> 修饰的整型变量，初始化值是10<br>然后定义了一个 <strong>_blk</strong> 这么一个当前对象的成员变量形式的 Block，然后在栈上进行创建<br>之后在修改 multiplier 的值为 6<br>调用一个执行 Block 的一个同一个实例的另一个方法</p>
+<p>讲解：在栈上创建了这个局部变量，通过 <strong>_ _block</strong> 修饰符修饰之后，这个局部变量就变成了一个对象，所以说这一步 multiplier = 6 的赋值实际上不是对变量进行赋值，而是通过 multiplier 这个对象的 <strong>_ _forwording</strong> 指针对其成员变量 multiplier 进行赋值<br>然后 <strong>_blk</strong> 这个变量实际上是某一对象的成员变量，当对它进行赋值操作的时候，会对它进行一个 copy，这个 block 就会跑到堆上面去或者说在堆上面有一个副本，然后再进行Block的执行</p>
+<p>如果说这个 <strong>_blk</strong> 没进行 copy 操作，那么修改的就是栈上 <strong>_ _block</strong> 变量，如果对这个 <strong>_blk</strong> 进行了 copy 操作，这个行代码 multiplier = 6 所代表的含义就是通过栈上的 multiplier 的 <strong>_ _forwording</strong> 指针找到堆上面所对应的 multiplier 的copy 副本，然后对其副本进行值的修改改成6</p>
+<p>右边调用了堆上的 block ，入参是 4，在调用的时候，在 Block 的执行体中所使用到的 multiplier <strong>_ _block</strong> 变量实际上使用的是堆上面的 <strong>_block</strong> 变量，在这里经过copy之后是对堆上面变量的修改，所以结构是4*6=24</p>
+<h3 id="forwarding-存在的意义"><a href="#forwarding-存在的意义" class="headerlink" title="_ _forwarding 存在的意义"></a>_ _forwarding 存在的意义</h3><ul>
+<li><strong>不论在任何内存位置，都可以顺利的访问同一个 _ _blcok 变量</strong></li>
+</ul>
+<p>如果没有对 <strong>_ _block</strong> 变量进行 copy 的话，那么实际上操作的就是栈上的 <strong>_ _block</strong> 变量<br>如果发生了 copy 之后，无论是在栈上还是在堆上，对 <strong>_ _block</strong> 的修改或者说赋值操作都是操作的堆上面的 <strong>_ _block</strong> 变量，同时栈上关于 <strong>_ _block</strong> 变量的使用也都是使用的堆上的 <strong>_ _block</strong> 变量</p>
+]]></content>
+      
+        <categories>
+            
+            <category> Block </category>
+            
+        </categories>
+        
+        
+        <tags>
+            
+            <tag> Objective-C </tag>
+            
+        </tags>
+        
+    </entry>
+    
+    <entry>
       <title><![CDATA[内存管理(六)--循环引用]]></title>
-      <url>/2018/06/03/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/</url>
+      <url>/2017/08/28/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/</url>
       <content type="html"><![CDATA[<hr>
 <p><a href="https://xiaopengmonsters.github.io/2018/06/13/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E6%96%B9%E6%A1%88/" target="_blank" rel="noopener">内存管理(一) – 内存管理方案</a><br><a href="https://xiaopengmonsters.github.io/2018/06/18/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E6%9C%89%E5%85%B3%E6%95%A3%E5%88%97%E8%A1%A8%E5%AE%9E%E7%8E%B0%E7%9A%84%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E6%96%B9%E6%B3%95%E7%9A%84%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" target="_blank" rel="noopener">内存管理(二) – 有关散列表实现的内存管理方法的数据结构</a><br><a href="https://xiaopengmonsters.github.io/2018/06/21/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BC%95%E7%94%A8%E8%AE%A1%E6%95%B0%E7%AE%A1%E7%90%86/" target="_blank" rel="noopener">内存管理(三) – 引用计数管理</a><br><a href="https://xiaopengmonsters.github.io/2018/06/28/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BC%B1%E5%BC%95%E7%94%A8%E7%AE%A1%E7%90%86/" target="_blank" rel="noopener">内存管理(四) – 弱引用管理</a><br><a href="https://xiaopengmonsters.github.io/2018/07/08/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E8%87%AA%E5%8A%A8%E9%87%8A%E6%94%BE%E6%B1%A0/" target="_blank" rel="noopener">内存管理(五) – 自动释放池</a><br><a href="https://xiaopengmonsters.github.io/2018/06/03/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">内存管理(六) – 循环引用</a><br><a href="https://xiaopengmonsters.github.io/2018/06/05/Block--Block%20%E7%9A%84%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">Block(四) – Block 的循环引用</a></p>
 <hr>
@@ -904,7 +872,7 @@
     
     <entry>
       <title><![CDATA[Runtime--类对象与元类对象(二)]]></title>
-      <url>/2018/05/13/Runtime--%E7%B1%BB%E5%AF%B9%E8%B1%A1%E4%B8%8E%E5%85%83%E7%B1%BB%E5%AF%B9%E8%B1%A1/</url>
+      <url>/2017/08/16/Runtime--%E7%B1%BB%E5%AF%B9%E8%B1%A1%E4%B8%8E%E5%85%83%E7%B1%BB%E5%AF%B9%E8%B1%A1/</url>
       <content type="html"><![CDATA[<hr>
 <p><a href="https://xiaopengmonsters.github.io/2018/05/03/Runtime--Runtime%E7%9A%84%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" target="_blank" rel="noopener">Runtime–Runtime的数据结构(一)</a><br><a href="https://xiaopengmonsters.github.io/2018/05/13/Runtime--%E7%B1%BB%E5%AF%B9%E8%B1%A1%E4%B8%8E%E5%85%83%E7%B1%BB%E5%AF%B9%E8%B1%A1/" target="_blank" rel="noopener">Runtime–类对象与元类对象(二)</a><br><a href="https://xiaopengmonsters.github.io/2017/02/14/Runtime/" target="_blank" rel="noopener">Runtime和消息转发(三)</a><br><a href="https://xiaopengmonsters.github.io/2017/02/20/Runtime%E4%B9%8B%E5%8A%A8%E6%80%81%E6%B7%BB%E5%8A%A0%E5%B1%9E%E6%80%A7/" target="_blank" rel="noopener">Runtime之动态添加属性(四)</a><br><a href="https://xiaopengmonsters.github.io/2017/02/21/Runtime%E4%B9%8B%E5%8A%A8%E6%80%81%E6%B7%BB%E5%8A%A0%E6%96%B9%E6%B3%95/" target="_blank" rel="noopener">Runtime之动态添加方法(五)</a></p>
 <hr>
@@ -984,7 +952,7 @@
     
     <entry>
       <title><![CDATA[Runtime--Runtime的数据结构(一)]]></title>
-      <url>/2018/05/03/Runtime--Runtime%E7%9A%84%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/</url>
+      <url>/2017/08/08/Runtime--Runtime%E7%9A%84%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/</url>
       <content type="html"><![CDATA[<hr>
 <p><a href="https://xiaopengmonsters.github.io/2018/05/03/Runtime--Runtime%E7%9A%84%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" target="_blank" rel="noopener">Runtime–Runtime的数据结构(一)</a><br><a href="https://xiaopengmonsters.github.io/2018/05/13/Runtime--%E7%B1%BB%E5%AF%B9%E8%B1%A1%E4%B8%8E%E5%85%83%E7%B1%BB%E5%AF%B9%E8%B1%A1/" target="_blank" rel="noopener">Runtime–类对象与元类对象(二)</a><br><a href="https://xiaopengmonsters.github.io/2017/02/14/Runtime/" target="_blank" rel="noopener">Runtime和消息转发(三)</a><br><a href="https://xiaopengmonsters.github.io/2017/02/20/Runtime%E4%B9%8B%E5%8A%A8%E6%80%81%E6%B7%BB%E5%8A%A0%E5%B1%9E%E6%80%A7/" target="_blank" rel="noopener">Runtime之动态添加属性(四)</a><br><a href="https://xiaopengmonsters.github.io/2017/02/21/Runtime%E4%B9%8B%E5%8A%A8%E6%80%81%E6%B7%BB%E5%8A%A0%E6%96%B9%E6%B3%95/" target="_blank" rel="noopener">Runtime之动态添加方法(五)</a></p>
 <hr>
@@ -1097,7 +1065,7 @@
     
     <entry>
       <title><![CDATA[UI视图--离屏渲染]]></title>
-      <url>/2018/04/16/UI%E8%A7%86%E5%9B%BE--%E7%A6%BB%E5%B1%8F%E6%B8%B2%E6%9F%93/</url>
+      <url>/2017/07/22/UI%E8%A7%86%E5%9B%BE--%E7%A6%BB%E5%B1%8F%E6%B8%B2%E6%9F%93/</url>
       <content type="html"><![CDATA[<hr>
 <p><a href="https://xiaopengmonsters.github.io/2018/04/05/UI%E8%A7%86%E5%9B%BE--%E5%9B%BE%E5%83%8F%E6%98%BE%E7%A4%BA%E5%8E%9F%E7%90%86%E4%B8%8E%E5%8D%A1%E9%A1%BF&amp;%E6%8E%89%E5%B8%A7/" target="_blank" rel="noopener">UI视图–图像显示原理与卡顿&amp;掉帧</a><br><a href="https://xiaopengmonsters.github.io/2018/04/13/UI%E8%A7%86%E5%9B%BE--UI%E7%BB%98%E5%88%B6%E5%8E%9F%E7%90%86&amp;%E5%BC%82%E6%AD%A5%E7%BB%98%E5%88%B6/" target="_blank" rel="noopener">UI视图–UI绘制原理&amp;异步绘制</a><br><a href="https://xiaopengmonsters.github.io/2018/04/16/UI%E8%A7%86%E5%9B%BE--%E7%A6%BB%E5%B1%8F%E6%B8%B2%E6%9F%93/" target="_blank" rel="noopener">UI视图–离屏渲染</a></p>
 <hr>
@@ -1146,8 +1114,47 @@
     </entry>
     
     <entry>
+      <title><![CDATA[Block(二)--_ _block 修饰符]]></title>
+      <url>/2017/07/21/Block--_%20_block%20%E4%BF%AE%E9%A5%B0%E7%AC%A6/</url>
+      <content type="html"><![CDATA[<hr>
+<p><a href="https://xiaopengmonsters.github.io/2018/07/16/Block--Block%20%E6%9C%AC%E8%B4%A8%E5%92%8C%E6%88%AA%E8%8E%B7%E5%8F%98%E9%87%8F/" target="_blank" rel="noopener">Block(一) – Block 本质和截获变量</a><br><a href="https://xiaopengmonsters.github.io/2018/07/21/Block--_%20_block%20%E4%BF%AE%E9%A5%B0%E7%AC%A6/" target="_blank" rel="noopener">Block(二) – _ _block 修饰符</a><br><a href="https://xiaopengmonsters.github.io/2018/08/06/Block--Block%20%E7%9A%84%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/" target="_blank" rel="noopener">Block(三) – Block 的内存管理</a><br><a href="https://xiaopengmonsters.github.io/2018/06/05/Block--Block%20%E7%9A%84%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">Block(四) – Block 的循环引用</a></p>
+<hr>
+<h3 id="什么场景下需要使用-block-修饰符"><a href="#什么场景下需要使用-block-修饰符" class="headerlink" title="什么场景下需要使用 _ _block 修饰符"></a>什么场景下需要使用 _ _block 修饰符</h3><p><img src="/img/__block修饰符使用场景.png" alt=""></p>
+<h3 id="思考两个题先"><a href="#思考两个题先" class="headerlink" title="思考两个题先"></a>思考两个题先</h3><p><img src="/img/笔试题的坑1.png" alt=""></p>
+<p><img src="/img/笔试题的坑2.png" alt=""></p>
+<h3 id="对变量进行赋值时，-block-具体使用特点"><a href="#对变量进行赋值时，-block-具体使用特点" class="headerlink" title="对变量进行赋值时，_ _block 具体使用特点"></a>对变量进行赋值时，_ _block 具体使用特点</h3><p><img src="/img/__block具体使用特点.png" alt=""></p>
+<p>因为 block 的截获变量特性，对于全局变量和静态全局变量不涉及截获操作，那么就是对全局变量和静态全局变量直接使用的，所以对其值进行操作的时候是不需要 杠杠block 修饰的<br>对于静态局部变量是通过指针形式来使用操作对应的变量的，那实际上操作的就是 block 外部的变量，所以说这种场景下也是不需要 _ _block 修饰的</p>
+<h3 id="Block-笔试题"><a href="#Block-笔试题" class="headerlink" title="_ _Block 笔试题"></a>_ _Block 笔试题</h3><p><img src="/img/__Block笔试题.png" alt=""></p>
+<h3 id="block-修饰符的机制和原理："><a href="#block-修饰符的机制和原理：" class="headerlink" title="_ _block 修饰符的机制和原理："></a>_ _block 修饰符的机制和原理：</h3><p><strong>_ _block 修饰的变量变成了对象</strong></p>
+<p><img src="/img/变量变成了对象.png" alt=""></p>
+<p>加了 杠杠block 修饰符之后，在编译后，这个整型变量最终就变成了一个结构体<br>结构体中有 void* 类型的 isa 指针，所以可以收 杠杠block 修饰符修饰的变量最终变成了对象<br>之后有一个指向同类型的指针 _ _forwarding<br>最后有一个成员变量 ，就是在函数当中所定义的局部变量</p>
+<p>比如说在 Block 定义后面对局部变量进行 4 的赋值操作，实际上这个变量已经变成了一个对象，是通过这个对象当中的 _ _forwarding 指针去找到对应的一个对象，然后对其成员变量进行值的赋值</p>
+<p>在方法当中对局部变量的赋值就改写成了对于他的对象通过 _ _forwarding 指针来修改对应的变量值</p>
+<p><strong>栈上的 _ _forwarding 指向它自身的</strong></p>
+<p>栈上的 block 进行局部变量的赋值，实际上 杠杠forwarding 指针指向的仍是自己所以修改的变量就是栈上 _ _block 它内部的一个成员值</p>
+<h3 id="留一个思考问题"><a href="#留一个思考问题" class="headerlink" title="留一个思考问题"></a>留一个思考问题</h3><p><img src="/img/杠杠forwarding用来干什么的.png" alt=""></p>
+<p>思考是很有意思的事 ~ ~ ~</p>
+<p>_ _forwarding 的内容详见<a href="https://xiaopengmonsters.github.io/2018/08/06/Block--Block%20%E7%9A%84%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/" target="_blank" rel="noopener">Block(三) – Block 的内存管理</a></p>
+]]></content>
+      
+        <categories>
+            
+            <category> Block </category>
+            
+        </categories>
+        
+        
+        <tags>
+            
+            <tag> Objective-C </tag>
+            
+        </tags>
+        
+    </entry>
+    
+    <entry>
       <title><![CDATA[UI视图--UI绘制原理&异步绘制]]></title>
-      <url>/2018/04/13/UI%E8%A7%86%E5%9B%BE--UI%E7%BB%98%E5%88%B6%E5%8E%9F%E7%90%86&amp;%E5%BC%82%E6%AD%A5%E7%BB%98%E5%88%B6/</url>
+      <url>/2017/07/20/UI%E8%A7%86%E5%9B%BE--UI%E7%BB%98%E5%88%B6%E5%8E%9F%E7%90%86&amp;%E5%BC%82%E6%AD%A5%E7%BB%98%E5%88%B6/</url>
       <content type="html"><![CDATA[<hr>
 <p><a href="http://localhost:4000/2018/04/05/UI%E8%A7%86%E5%9B%BE--%E5%9B%BE%E5%83%8F%E6%98%BE%E7%A4%BA%E5%8E%9F%E7%90%86%E4%B8%8E%E5%8D%A1%E9%A1%BF&amp;%E6%8E%89%E5%B8%A7/" target="_blank" rel="noopener">UI视图–图像显示原理与卡顿&amp;掉帧</a><br><a href="http://localhost:4000/2018/04/13/UI%E8%A7%86%E5%9B%BE--UI%E7%BB%98%E5%88%B6%E5%8E%9F%E7%90%86&amp;%E5%BC%82%E6%AD%A5%E7%BB%98%E5%88%B6/" target="_blank" rel="noopener">UI视图–UI绘制原理&amp;异步绘制</a><br><a href="http://localhost:4000/2018/04/16/UI%E8%A7%86%E5%9B%BE--%E7%A6%BB%E5%B1%8F%E6%B8%B2%E6%9F%93/" target="_blank" rel="noopener">UI视图–离屏渲染</a></p>
 <hr>
@@ -1191,8 +1198,55 @@
     </entry>
     
     <entry>
+      <title><![CDATA[Block(一)--Block 本质和截获变量]]></title>
+      <url>/2017/07/16/Block--Block%20%E6%9C%AC%E8%B4%A8%E5%92%8C%E6%88%AA%E8%8E%B7%E5%8F%98%E9%87%8F/</url>
+      <content type="html"><![CDATA[<hr>
+<p><a href="https://xiaopengmonsters.github.io/2018/07/16/Block--Block%20%E6%9C%AC%E8%B4%A8%E5%92%8C%E6%88%AA%E8%8E%B7%E5%8F%98%E9%87%8F/" target="_blank" rel="noopener">Block(一) – Block 本质和截获变量</a><br><a href="https://xiaopengmonsters.github.io/2018/07/21/Block--_%20_block%20%E4%BF%AE%E9%A5%B0%E7%AC%A6/" target="_blank" rel="noopener">Block(二) – _ _block 修饰符</a><br><a href="https://xiaopengmonsters.github.io/2018/08/06/Block--Block%20%E7%9A%84%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/" target="_blank" rel="noopener">Block(三) – Block 的内存管理</a><br><a href="https://xiaopengmonsters.github.io/2018/06/05/Block--Block%20%E7%9A%84%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">Block(四) – Block 的循环引用</a></p>
+<hr>
+<h2 id="Block-本质"><a href="#Block-本质" class="headerlink" title="Block 本质"></a>Block 本质</h2><p><img src="/img/Block本质.png" alt=""></p>
+<p>Block 实际上就是一个对象（结构体中有 isa 指针），<strong>这个对象封装了函数，以及函数执行的上下文</strong></p>
+<p>Block 在编译器编译之后会转换成：</p>
+<p><img src="/img/Block编译1.png" alt=""></p>
+<p><img src="/img/Block编译2.png" alt=""></p>
+<p>Block 在编译器编译之后，是一个高亮的结构体，第一参数是无类型的函数指针，第二参数是 Block 相关描述的结构，后面的参数是 Block 要使用的，比如这里是传进来 Block 的局部变量</p>
+<p>在这个高亮的结构体中有一个 impl 的结构体，在这个结构体中4个成员变量<br>第一个是 void 类型的 isa 指针，所以可以理解 block 是一个对象<br>还有一个关键的对象 FuncPtr，是无类型的函数指针，在 Block 的花括号中所定义的执行体，最终就会产生这样一个函数，然后 Block 同过函数指针来指向对应的函数实现</p>
+<h3 id="什么是-Block-调用？"><a href="#什么是-Block-调用？" class="headerlink" title="什么是 Block 调用？"></a>什么是 Block 调用？</h3><ul>
+<li>Block 调用即是<strong>函数的调用</strong></li>
+</ul>
+<p>首先对 block 进行强制类型转换，转后转后取它当中的成员变量 FuncPtr ，FuncPtr 是位于 Block 的结构体当中，通过函数指针取到对应的函数执行体，然后把对应的参数传进去</p>
+<h2 id="Block-截获变量"><a href="#Block-截获变量" class="headerlink" title="Block 截获变量"></a>Block 截获变量</h2><h3 id="思考一道题先"><a href="#思考一道题先" class="headerlink" title="思考一道题先"></a>思考一道题先</h3><p><img src="/img/滴滴笔试真题Block.png" alt=""></p>
+<p>阅读一下下这个题：<br>首先定义了一个 int 类型的局部变量值为 6<br>之后定义了一个入参和返回值均为 int 类型的 Block，它的表达式是把入参和局不变的乘积作为返回值<br>之后又把局部变量的值修改为 4<br>然后在控制台打印输入参数为 2 的 Block 调用结果</p>
+<p><strong>没错 是12，不小心被你看见了，那为什么是12呢，思考一下</strong></p>
+<p>关于截获变量就涉及被截获变量的类型，针对不同类型的变量，Block 对其截获的特点也是不一样的</p>
+<p>思考：关于 Block 的截获特性你是否有了解？  </p>
+<h3 id="特性"><a href="#特性" class="headerlink" title="特性"></a>特性</h3><p>局部变量（基本数据类型、对象类型）<br>静态局部变量<br>全局变量<br>静态全局变量</p>
+<p><img src="/img/Block截获变量特性.png" alt=""></p>
+<p>为什么是12：因为这是一个基本数据类型变量，在定义的时候就以值的方式传递到了 Block 所对应的结构体当中，而具体的函数调用是使用 Block 对应结构体当中的变量，所以输出的值是 12</p>
+<p><strong>理解以指针形式截获静态变量：</strong></p>
+<p><img src="/img/指针形式截获静态变量.png" alt=""></p>
+<p>因为在 Block 结构体当中是传递进或者说保存了静态局部变量的指针，那在具体调用的时候，通过这个指针来找到对应静态局部变量的值，静态局部变量被修改成4了，所以结果是8</p>
+<p><strong>思考：如果在 Block 当中想要对局部变量进行值的修改，怎么做 </strong></p>
+<p>用 <strong>_ _block</strong> 实现<br>详见<a href="https://xiaopengmonsters.github.io/2018/07/21/Block--_%20_block%20%E4%BF%AE%E9%A5%B0%E7%AC%A6/" target="_blank" rel="noopener">Block(二) – _ _block 修饰符</a></p>
+]]></content>
+      
+        <categories>
+            
+            <category> Block </category>
+            
+        </categories>
+        
+        
+        <tags>
+            
+            <tag> Objective-C </tag>
+            
+        </tags>
+        
+    </entry>
+    
+    <entry>
       <title><![CDATA[UI视图--图像显示原理与卡顿&掉帧]]></title>
-      <url>/2018/04/05/UI%E8%A7%86%E5%9B%BE--%E5%9B%BE%E5%83%8F%E6%98%BE%E7%A4%BA%E5%8E%9F%E7%90%86%E4%B8%8E%E5%8D%A1%E9%A1%BF&amp;%E6%8E%89%E5%B8%A7/</url>
+      <url>/2017/07/10/UI%E8%A7%86%E5%9B%BE--%E5%9B%BE%E5%83%8F%E6%98%BE%E7%A4%BA%E5%8E%9F%E7%90%86%E4%B8%8E%E5%8D%A1%E9%A1%BF&amp;%E6%8E%89%E5%B8%A7/</url>
       <content type="html"><![CDATA[<hr>
 <p><a href="http://localhost:4000/2018/04/05/UI%E8%A7%86%E5%9B%BE--%E5%9B%BE%E5%83%8F%E6%98%BE%E7%A4%BA%E5%8E%9F%E7%90%86%E4%B8%8E%E5%8D%A1%E9%A1%BF&amp;%E6%8E%89%E5%B8%A7/" target="_blank" rel="noopener">UI视图–图像显示原理与卡顿&amp;掉帧</a><br><a href="http://localhost:4000/2018/04/13/UI%E8%A7%86%E5%9B%BE--UI%E7%BB%98%E5%88%B6%E5%8E%9F%E7%90%86&amp;%E5%BC%82%E6%AD%A5%E7%BB%98%E5%88%B6/" target="_blank" rel="noopener">UI视图–UI绘制原理&amp;异步绘制</a><br><a href="http://localhost:4000/2018/04/16/UI%E8%A7%86%E5%9B%BE--%E7%A6%BB%E5%B1%8F%E6%B8%B2%E6%9F%93/" target="_blank" rel="noopener">UI视图–离屏渲染</a></p>
 <hr>
@@ -1248,7 +1302,7 @@
     
     <entry>
       <title><![CDATA[iOS应用架构谈：本地持久化方案]]></title>
-      <url>/2018/03/18/iOS%E5%BA%94%E7%94%A8%E6%9E%B6%E6%9E%84%E8%B0%88%EF%BC%9A%E6%9C%AC%E5%9C%B0%E6%8C%81%E4%B9%85%E5%8C%96%E6%96%B9%E6%A1%88%E5%8F%8A%E5%8A%A8%E6%80%81%E9%83%A8%E7%BD%B2/</url>
+      <url>/2017/06/20/iOS%E5%BA%94%E7%94%A8%E6%9E%B6%E6%9E%84%E8%B0%88%EF%BC%9A%E6%9C%AC%E5%9C%B0%E6%8C%81%E4%B9%85%E5%8C%96%E6%96%B9%E6%A1%88%E5%8F%8A%E5%8A%A8%E6%80%81%E9%83%A8%E7%BD%B2/</url>
       <content type="html"><![CDATA[<hr>
 <p><a href="https://xiaopengmonsters.github.io/2018/03/10/iOS%E5%BA%94%E7%94%A8%E6%9E%B6%E6%9E%84%E8%B0%88%EF%BC%9A%E7%BD%91%E7%BB%9C%E5%B1%82%E6%A1%86%E6%9E%B6%E7%9A%84%E8%AE%BE%E8%AE%A1/" target="_blank" rel="noopener">iOS应用架构谈：网络层框架的设计</a><br><a href="https://xiaopengmonsters.github.io/2018/03/15/iOS%E5%BA%94%E7%94%A8%E6%9E%B6%E6%9E%84%E8%B0%88%EF%BC%9A%E7%BD%91%E7%BB%9C%E5%B1%82%E6%A1%86%E6%9E%B6%E7%9A%84%E4%BC%98%E5%8C%96/" target="_blank" rel="noopener">iOS应用架构谈：网络层框架的优化</a><br><a href="https://xiaopengmonsters.github.io/2018/03/18/iOS%E5%BA%94%E7%94%A8%E6%9E%B6%E6%9E%84%E8%B0%88%EF%BC%9A%E6%9C%AC%E5%9C%B0%E6%8C%81%E4%B9%85%E5%8C%96%E6%96%B9%E6%A1%88%E5%8F%8A%E5%8A%A8%E6%80%81%E9%83%A8%E7%BD%B2/" target="_blank" rel="noopener">iOS应用架构谈：本地持久化方案</a></p>
 <hr>
@@ -1329,7 +1383,7 @@
     
     <entry>
       <title><![CDATA[iOS应用架构谈：网络层框架的优化]]></title>
-      <url>/2018/03/15/iOS%E5%BA%94%E7%94%A8%E6%9E%B6%E6%9E%84%E8%B0%88%EF%BC%9A%E7%BD%91%E7%BB%9C%E5%B1%82%E6%A1%86%E6%9E%B6%E7%9A%84%E4%BC%98%E5%8C%96/</url>
+      <url>/2017/06/18/iOS%E5%BA%94%E7%94%A8%E6%9E%B6%E6%9E%84%E8%B0%88%EF%BC%9A%E7%BD%91%E7%BB%9C%E5%B1%82%E6%A1%86%E6%9E%B6%E7%9A%84%E4%BC%98%E5%8C%96/</url>
       <content type="html"><![CDATA[<hr>
 <p><a href="https://xiaopengmonsters.github.io/2018/03/10/iOS%E5%BA%94%E7%94%A8%E6%9E%B6%E6%9E%84%E8%B0%88%EF%BC%9A%E7%BD%91%E7%BB%9C%E5%B1%82%E6%A1%86%E6%9E%B6%E7%9A%84%E8%AE%BE%E8%AE%A1/" target="_blank" rel="noopener">iOS应用架构谈：网络层框架的设计</a><br><a href="https://xiaopengmonsters.github.io/2018/03/15/iOS%E5%BA%94%E7%94%A8%E6%9E%B6%E6%9E%84%E8%B0%88%EF%BC%9A%E7%BD%91%E7%BB%9C%E5%B1%82%E6%A1%86%E6%9E%B6%E7%9A%84%E4%BC%98%E5%8C%96/" target="_blank" rel="noopener">iOS应用架构谈：网络层框架的优化</a><br><a href="https://xiaopengmonsters.github.io/2018/03/18/iOS%E5%BA%94%E7%94%A8%E6%9E%B6%E6%9E%84%E8%B0%88%EF%BC%9A%E6%9C%AC%E5%9C%B0%E6%8C%81%E4%B9%85%E5%8C%96%E6%96%B9%E6%A1%88%E5%8F%8A%E5%8A%A8%E6%80%81%E9%83%A8%E7%BD%B2/" target="_blank" rel="noopener">iOS应用架构谈：本地持久化方案</a></p>
 <hr>
@@ -1417,7 +1471,7 @@
     
     <entry>
       <title><![CDATA[iOS应用架构谈：网络层框架的设计]]></title>
-      <url>/2018/03/10/iOS%E5%BA%94%E7%94%A8%E6%9E%B6%E6%9E%84%E8%B0%88%EF%BC%9A%E7%BD%91%E7%BB%9C%E5%B1%82%E6%A1%86%E6%9E%B6%E7%9A%84%E8%AE%BE%E8%AE%A1/</url>
+      <url>/2017/06/15/iOS%E5%BA%94%E7%94%A8%E6%9E%B6%E6%9E%84%E8%B0%88%EF%BC%9A%E7%BD%91%E7%BB%9C%E5%B1%82%E6%A1%86%E6%9E%B6%E7%9A%84%E8%AE%BE%E8%AE%A1/</url>
       <content type="html"><![CDATA[<hr>
 <p><a href="https://xiaopengmonsters.github.io/2018/03/10/iOS%E5%BA%94%E7%94%A8%E6%9E%B6%E6%9E%84%E8%B0%88%EF%BC%9A%E7%BD%91%E7%BB%9C%E5%B1%82%E6%A1%86%E6%9E%B6%E7%9A%84%E8%AE%BE%E8%AE%A1/" target="_blank" rel="noopener">iOS应用架构谈：网络层框架的设计</a><br><a href="https://xiaopengmonsters.github.io/2018/03/15/iOS%E5%BA%94%E7%94%A8%E6%9E%B6%E6%9E%84%E8%B0%88%EF%BC%9A%E7%BD%91%E7%BB%9C%E5%B1%82%E6%A1%86%E6%9E%B6%E7%9A%84%E4%BC%98%E5%8C%96/" target="_blank" rel="noopener">iOS应用架构谈：网络层框架的优化</a><br><a href="https://xiaopengmonsters.github.io/2018/03/18/iOS%E5%BA%94%E7%94%A8%E6%9E%B6%E6%9E%84%E8%B0%88%EF%BC%9A%E6%9C%AC%E5%9C%B0%E6%8C%81%E4%B9%85%E5%8C%96%E6%96%B9%E6%A1%88%E5%8F%8A%E5%8A%A8%E6%80%81%E9%83%A8%E7%BD%B2/" target="_blank" rel="noopener">iOS应用架构谈：本地持久化方案</a></p>
 <hr>
@@ -1517,62 +1571,8 @@
     </entry>
     
     <entry>
-      <title><![CDATA[iOS Delegate 引发的血案]]></title>
-      <url>/2018/02/18/iOS%20Delegate%20%E5%BC%95%E5%8F%91%E7%9A%84%E8%A1%80%E6%A1%88/</url>
-      <content type="html"><![CDATA[<p>今天在项目重构过程中遇到一个很神奇的 bug，和同组的小伙伴一起研究了好久终于排查出问题所在，当然大家应该已经猜到了这个问题是因为 Delegate 的使用所导致的。接下来我先简单的将这个问题描述一下</p>
-<h2 id="问题描述"><a href="#问题描述" class="headerlink" title="问题描述"></a>问题描述</h2><p><img src="/img/iOSDelegate引发的血案.png" alt=""></p>
-<ul>
-<li>矩形框1里面的每个标签对应一个 tableView, 该 tableView 都是由同一个类实例化所得。</li>
-<li>矩形框2是一个音频播放器，初始化是在 tableView 内的，UI在 tableViewCell 内实现的一个按钮。</li>
-<li>点击矩形框2内的按钮的时候，tableViewCell 通过代理通知 tableView 执行播放器播放操作并把相关数据字典dic传递给tableView。</li>
-<li>tableView 接收到代理后执行播放器的播放代理，同时会用到cell传递回来的数据</li>
-</ul>
-<p>操作描述</p>
-<ul>
-<li>进入到上图所示界面，默认选中的是全部标签，直接点击其余任意一个标签，然后再切换回到全部标签</li>
-<li>点击播放按钮，排查到 tableView 中 cell 的代理内数据dic值正常，播放器代理中数据dic值为空，导致无法播放</li>
-</ul>
-<h2 id="代码贴出来"><a href="#代码贴出来" class="headerlink" title="代码贴出来"></a>代码贴出来</h2><figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br></pre></td><td class="code"><pre><span class="line">YDLTalkTableView.m</span><br><span class="line"></span><br><span class="line"><span class="meta">#pragma mark - lify cycle</span></span><br><span class="line"><span class="meta">#pragma mark - DFPlayer为播放器</span></span><br><span class="line">- (<span class="keyword">instancetype</span>)initWithFrame:(<span class="built_in">CGRect</span>)frame style:(<span class="built_in">UITableViewStyle</span>)style withTab:(<span class="built_in">NSString</span> *)tab&#123;</span><br><span class="line">    <span class="keyword">self</span> = [<span class="keyword">super</span> initWithFrame:frame style:style];</span><br><span class="line">    <span class="keyword">if</span> (<span class="keyword">self</span>) &#123;</span><br><span class="line">        [DFPlayer shareInstance].category = DFPlayerAudioSessionCategorySoloAmbient;</span><br><span class="line">        [DFPlayer shareInstance].playMode = DFPlayerModeOnlyOnce;</span><br><span class="line">        [DFPlayer shareInstance].isObserveWWAN = <span class="literal">NO</span>;</span><br><span class="line">        [DFPlayer shareInstance].dataSource = <span class="keyword">self</span>;</span><br><span class="line">        [DFPlayer shareInstance].delegate = <span class="keyword">self</span>;</span><br><span class="line">        [[DFPlayer shareInstance] df_audioPause];</span><br><span class="line">        <span class="keyword">self</span>.delegate = <span class="keyword">self</span>;</span><br><span class="line">        <span class="keyword">self</span>.dataSource  = <span class="keyword">self</span>;</span><br><span class="line">        <span class="keyword">if</span> (@available(iOS <span class="number">11.0</span>, *)) &#123;</span><br><span class="line">            <span class="built_in">UIScrollView</span>.appearance.contentInsetAdjustmentBehavior = <span class="built_in">UIScrollViewContentInsetAdjustmentNever</span>;</span><br><span class="line">            <span class="keyword">self</span>.estimatedRowHeight = <span class="number">0</span>;</span><br><span class="line">            <span class="keyword">self</span>.estimatedSectionHeaderHeight = <span class="number">0</span>;</span><br><span class="line">            <span class="keyword">self</span>.estimatedSectionFooterHeight = <span class="number">0</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">// Fallback on earlier versions</span></span><br><span class="line">        &#125;</span><br><span class="line">        [<span class="keyword">self</span> registerClass:[YDLTalkTableViewCell <span class="keyword">class</span>] forCellReuseIdentifier:<span class="built_in">NSStringFromClass</span>([YDLTalkTableViewCell <span class="keyword">class</span>])];</span><br><span class="line">        [<span class="keyword">self</span> setSeparatorStyle:<span class="built_in">UITableViewCellSeparatorStyleNone</span>];</span><br><span class="line">        [<span class="keyword">self</span> setBackgroundColor:kBackGroundColor];</span><br><span class="line">        <span class="keyword">self</span>.tableFooterView = [<span class="built_in">UIView</span> new];</span><br><span class="line">        __<span class="keyword">weak</span> <span class="keyword">typeof</span>(<span class="keyword">self</span>) weakSelf = <span class="keyword">self</span>;</span><br><span class="line">        [<span class="keyword">self</span> loadHeaderRefreshWithHeaderRefreshingBlock:^&#123;</span><br><span class="line">            [weakSelf onHeader];</span><br><span class="line">        &#125;];</span><br><span class="line">        [<span class="keyword">self</span> loadFooterRefreshWithFootRefreshingBlock:^&#123;</span><br><span class="line">            [weakSelf onFooter];</span><br><span class="line">        &#125;];</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">self</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#pragma mark - cell的代理方法</span></span><br><span class="line">-(<span class="keyword">void</span>)bofangTalk:(<span class="built_in">NSDictionary</span>*)dict&#123;</span><br><span class="line">    _dict = dict;<span class="comment">//此处dict值为正常的</span></span><br><span class="line">    [MBProgressHUD showError:_dict[<span class="string">@"expert_name"</span>] toView:_viewController.view];</span><br><span class="line">    [[DFPlayer shareInstance] df_reloadData];</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#pragma mark - DFPLayer dataSource</span></span><br><span class="line">- (<span class="built_in">NSArray</span>&lt;DFPlayerModel *&gt; *)df_playerModelArray&#123;</span><br><span class="line">    <span class="built_in">NSLog</span>(<span class="string">@"%@"</span>, _dict);<span class="comment">//此处dict值为nil</span></span><br><span class="line">    <span class="built_in">NSMutableArray</span> *_df_ModelArray;</span><br><span class="line">    <span class="keyword">return</span> _df_ModelArray;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h2 id="问题解决"><a href="#问题解决" class="headerlink" title="问题解决"></a>问题解决</h2><p>我们都知道代理是属于一对一的关系，请看下面这段代码：</p>
-<figure class="highlight elm"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">- (instance<span class="keyword">type</span>)initWithFrame:(<span class="type">CGRect</span>)frame style:(<span class="type">UITableViewStyle</span>)style withTab:(<span class="type">NSString</span> *)tab&#123;</span><br><span class="line">    self = [super initWithFrame:frame style:style];</span><br><span class="line">    if (self) &#123;</span><br><span class="line">        [<span class="type">DFPlayer</span> shareInstance].dataSource = self;</span><br><span class="line">        [<span class="type">DFPlayer</span> shareInstance].delegate = self;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>当我们进入这个页面的时候首先创建的是“全部”标签下对应的tableView,这个时候播放器的代理是“全部”标签对应的tableView，当我们点击任意其他一个标签的时候，播放器的代理就会变成该标签对应的tableView，然后等我们回到“全部”标签的时候，是不会调用上面方法的，所以这个时候播放器的代理其实还是我们上次点击的标签所对应的tableView。所以我们就可以理解为什么执行cell的delegate的时候dict的值是正常的，而到执行播放器代理的时候dict的值就变为了nil了。</p>
-<p>为什么会出现这种情况呢，有些人可能会说了：我平时这么写也没发现有问题啊。这就是我们这个案例特殊的一点，因为我们的播放器是通过单例来创建的，也就是说全局只会存在着一个实例，那么他的代理也应该是只对应一个的，以最后一个设置的为准，如果在上面的方法中我们的播放器通过[[DFPlayer alloc] init]来创建的话，那就没有问题了</p>
-<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>遇到问题很兴奋，解决问题更兴奋。</p>
-<p>首先遇到 bug 不要慌，是时候展现自己真正的技术了（简单的排查思路）</p>
-<ul>
-<li>解决问题一定要思路清晰，先根据 bug 现象判断出问题的大体可能，然后验证你的假想（我的项目播放是利用代理来回传进行播放的，所以大致定位到 delegate 出现相关问题）</li>
-<li>然后用自己的经验和掌握的技能（断点、排除法、逐步分析法等等）找到出现问题的具体代码行（一顿操作操作排查到 tableView 中 cell 的代理内数据dic值正常，播放器代理中数据dic值为空，导致无法播放）</li>
-<li>最后分析导致问题的可能，逐步更正（这里是有必要联系场景分析的）</li>
-</ul>
-<p>默认选中的是全部标签，直接点击其余任意一个标签，然后再切换回到全部标签出现问题，综上</p>
-<ul>
-<li>你可能就会想到，标签切换回来的时候代理失效了（想的不错，当然需要一些时间）</li>
-<li>思考代理为什么会失效？（找到关键了，让代理不失效就ok了）</li>
-<li>思考怎么让代理不失效？（又找到关键了，发现在标签切换的时候代理指向别处了，结合代理一对一的特性）</li>
-<li>思考怎么将代理重新指向当前控制器（哎呀，又想到关键了，在播放事件中重新改变代理的指向而不是之前的在初始化时指向代理）</li>
-<li>问题解决，完美</li>
-</ul>
-<p>以此篇记录关于 delegate（设置单例的代理）引发的 bug</p>
-]]></content>
-      
-        <categories>
-            
-            <category> 问题记录 </category>
-            
-        </categories>
-        
-        
-        <tags>
-            
-            <tag> Objective-C </tag>
-            
-        </tags>
-        
-    </entry>
-    
-    <entry>
       <title><![CDATA[UITableView的优化进阶篇]]></title>
-      <url>/2018/02/16/UITableView%E7%9A%84%E4%BC%98%E5%8C%96%E8%BF%9B%E9%98%B6%E7%AF%87/</url>
+      <url>/2017/05/30/UITableView%E7%9A%84%E4%BC%98%E5%8C%96%E8%BF%9B%E9%98%B6%E7%AF%87/</url>
       <content type="html"><![CDATA[<hr>
 <p><a href="https://xiaopengmonsters.github.io/2017/12/26/UITableView%E7%9A%84%E4%BC%98%E5%8C%96/" target="_blank" rel="noopener">UITableView的优化</a><br><a href="https://xiaopengmonsters.github.io/2018/02/16/UITableView%E7%9A%84%E4%BC%98%E5%8C%96%E8%BF%9B%E9%98%B6%E7%AF%87/" target="_blank" rel="noopener">UITableView的优化进阶篇</a><br><a href="https://xiaopengmonsters.github.io/2018/01/08/APP%E7%9A%84%E4%BC%98%E5%8C%96/" target="_blank" rel="noopener">APP的优化</a></p>
 <hr>
@@ -1629,7 +1629,7 @@
     
     <entry>
       <title><![CDATA[APP的优化]]></title>
-      <url>/2018/01/08/APP%E7%9A%84%E4%BC%98%E5%8C%96/</url>
+      <url>/2017/05/15/APP%E7%9A%84%E4%BC%98%E5%8C%96/</url>
       <content type="html"><![CDATA[<hr>
 <p><a href="https://xiaopengmonsters.github.io/2017/12/26/UITableView%E7%9A%84%E4%BC%98%E5%8C%96/" target="_blank" rel="noopener">UITableView的优化</a><br><a href="https://xiaopengmonsters.github.io/2018/02/16/UITableView%E7%9A%84%E4%BC%98%E5%8C%96%E8%BF%9B%E9%98%B6%E7%AF%87/" target="_blank" rel="noopener">UITableView的优化进阶篇</a><br><a href="https://xiaopengmonsters.github.io/2018/01/08/APP%E7%9A%84%E4%BC%98%E5%8C%96/" target="_blank" rel="noopener">APP的优化</a></p>
 <hr>
@@ -1694,7 +1694,7 @@
     
     <entry>
       <title><![CDATA[UITableView的优化]]></title>
-      <url>/2017/12/26/UITableView%E7%9A%84%E4%BC%98%E5%8C%96/</url>
+      <url>/2017/05/08/UITableView%E7%9A%84%E4%BC%98%E5%8C%96/</url>
       <content type="html"><![CDATA[<hr>
 <p><a href="https://xiaopengmonsters.github.io/2017/12/26/UITableView%E7%9A%84%E4%BC%98%E5%8C%96/" target="_blank" rel="noopener">UITableView的优化</a><br><a href="https://xiaopengmonsters.github.io/2018/02/16/UITableView%E7%9A%84%E4%BC%98%E5%8C%96%E8%BF%9B%E9%98%B6%E7%AF%87/" target="_blank" rel="noopener">UITableView的优化进阶篇</a><br><a href="https://xiaopengmonsters.github.io/2018/01/08/APP%E7%9A%84%E4%BC%98%E5%8C%96/" target="_blank" rel="noopener">APP的优化</a></p>
 <hr>
@@ -1784,7 +1784,7 @@
     
     <entry>
       <title><![CDATA[NStimer准确吗]]></title>
-      <url>/2017/12/14/NStimer%E5%87%86%E7%A1%AE%E5%90%97/</url>
+      <url>/2017/05/05/NStimer%E5%87%86%E7%A1%AE%E5%90%97/</url>
       <content type="html"><![CDATA[<h3 id="基本使用"><a href="#基本使用" class="headerlink" title="基本使用"></a>基本使用</h3><figure class="highlight groovy"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"> <span class="comment">/*   </span></span><br><span class="line"><span class="comment">  * TimeInterval:设定执行时间    </span></span><br><span class="line"><span class="comment">  * target:目标    </span></span><br><span class="line"><span class="comment">  * @selector:方法(也就是目标(target)的行为(selector))  </span></span><br><span class="line"><span class="comment">  * userInfo:用于向selector方法中传参数,  一般是self</span></span><br><span class="line"><span class="comment">  * repeats:是否重复</span></span><br><span class="line"><span class="comment">  */</span></span><br><span class="line">  </span><br><span class="line">NSTimer * timer = [NSTimer <span class="string">scheduledTimerWithTimeInterval:</span><span class="number">.3</span> <span class="string">target:</span>self <span class="string">selector:</span><span class="meta">@selector</span>(<span class="string">changeColor:</span>) <span class="string">userInfo:</span>view <span class="string">repeats:</span>YES];    </span><br><span class="line">[timer fire];<span class="comment">//开始执行</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//计时器执行的方法,sender 就是对应的计时器(那个计时器调的我)</span></span><br><span class="line">- (<span class="keyword">void</span>)<span class="string">changeColor:</span>(NSTimer *)sender</span><br><span class="line">&#123;    </span><br><span class="line"><span class="comment">//sender计时器对象,通过.userinfo属性就能拿到当初传来的参数(id类型),</span></span><br><span class="line">对于此题上面穿的是一个view对象,所以直接用UIview类型接收   </span><br><span class="line"> UIView * vie = sender.userInfo;   </span><br><span class="line"> <span class="comment">//修改传入视图的背景色   </span></span><br><span class="line"> vie.backgroundColor = [UIColor <span class="string">colorWithRed:</span>arc4random() % <span class="number">256</span> <span class="regexp">/ 255.0 green:arc4random() % 256 /</span> <span class="number">255.0</span> <span class="string">blue:</span>arc4random() % <span class="number">256</span> / <span class="number">255.0</span> <span class="string">alpha:</span><span class="number">1.0</span>];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>NSTimer 不是一个基于真实时间的机制。NSTimer被激发需要满足三个条件：</p>
 <ol>
@@ -1831,7 +1831,7 @@
     
     <entry>
       <title><![CDATA[iOS中的多线程]]></title>
-      <url>/2017/11/18/iOS%E4%B8%AD%E7%9A%84%E5%A4%9A%E7%BA%BF%E7%A8%8B/</url>
+      <url>/2017/04/28/iOS%E4%B8%AD%E7%9A%84%E5%A4%9A%E7%BA%BF%E7%A8%8B/</url>
       <content type="html"><![CDATA[<p>在 iOS 中其实目前有 4 套多线程方案，他们分别是：</p>
 <ol>
 <li>Pthreads</li>

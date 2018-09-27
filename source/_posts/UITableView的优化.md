@@ -1,6 +1,6 @@
 ---
 title: UITableView的优化
-date: 2017-12-26 17:23:33
+date: 2017-05-08 17:23:33
 
 description: UITableView是iOS中最常用的控件之一，毫不夸张的说基本每个app的都会用到UITableView，简单的使用可能不会有什么问题，但是利用UITableView进行复杂的布局（比如朋友圈的实现），就可能会出现一些性能问题，例如：滑动时卡顿，cell加载太慢等。
 

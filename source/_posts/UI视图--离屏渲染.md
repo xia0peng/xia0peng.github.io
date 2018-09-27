@@ -1,6 +1,6 @@
 ---
 title: UI视图--离屏渲染
-date: 2018-04-16 13:11:19
+date: 2017-07-22 13:11:19
 description: 离屏渲染
 categories: UI视图
 tags: [Objective-C]

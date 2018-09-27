@@ -1,6 +1,6 @@
 ---
 title: NStimer准确吗
-date: 2017-12-14 13:15:48
+date: 2017-05-05 13:15:48
 
 description: NSTimer 不是一个基于真实时间的机制。NSTimer被激发需要满足三个条件。
 
