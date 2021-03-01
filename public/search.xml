@@ -3,6 +3,47 @@
   
     
     <entry>
+      <title><![CDATA[RN分包、增量更新 - iOS部分]]></title>
+      <url>/2020/08/10/RN%E5%88%86%E5%8C%85%E5%92%8C%E7%83%AD%E6%9B%B4%E6%96%B0-iOS%E9%83%A8%E5%88%86/</url>
+      <content type="html"><![CDATA[<h3 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h3><p>项目初期所有 React Native 业务都打成一个bundle，客户端在集成JS代码时由于压力过大，导致白屏和内存问题。</p>
+<h3 id="方案"><a href="#方案" class="headerlink" title="方案"></a>方案</h3><p>将重复的 React Native 代码和第三方库打包成一个基础包，然后各个业务在基础包的 js 环境下运行，这样做可以减少内存开销且热更新的时候只需要下载对应的业务包，减少包大小。</p>
+<h3 id="客户端加载方案"><a href="#客户端加载方案" class="headerlink" title="客户端加载方案"></a>客户端加载方案</h3><p>基础包预加载，监听基础包加载成功的消息，基础包加载后再加载业务包，顺序和时机控制 </p>
+<h3 id="客户端加载方案-1"><a href="#客户端加载方案-1" class="headerlink" title="客户端加载方案"></a>客户端加载方案</h3><p><img src="/img/RN分包和增量更新.png" alt=""></p>
+<h3 id="问题记录"><a href="#问题记录" class="headerlink" title="问题记录"></a>问题记录</h3><p><strong>1</strong></p>
+<p><img src="/img/RN分包错误1.png" alt=""></p>
+<p>是因为 JS 加载了一个  RCTEventEitter 的子类。原生没有导致</p>
+<p><img src="/img/RN分包错误1解析.png" alt=""></p>
+<p><strong>2</strong></p>
+<p><img src="/img/RN分包错误2.png" alt=""></p>
+<p>加载业务时基础包没有加载好或者加载失败，需要提前加载基础包</p>
+<p><strong>3</strong> </p>
+<p>第一次打开业务正常，后面都是白屏，是因为页面销毁的时候将已加载的 JS 释放了</p>
+<p><img src="/img/RN分包错误3.png" alt=""></p>
+<p><strong>4</strong></p>
+<p><img src="/img/RN分包错误4.png" alt=""></p>
+<p>JS 使用了 RNSmartassete 原生没有</p>
+<p><img src="/img/RN分包错误4解析.png" alt=""></p>
+<p>###最后</p>
+<p>搭配上自动化工具和脚本，效率提升极大。</p>
+<p>时间匆忙，简要记录。</p>
+]]></content>
+      
+        <categories>
+            
+            <category> 性能优化 </category>
+            
+        </categories>
+        
+        
+        <tags>
+            
+            <tag> Objective-C </tag>
+            
+        </tags>
+        
+    </entry>
+    
+    <entry>
       <title><![CDATA[iOS Delegate 引发的血案]]></title>
       <url>/2018/03/18/iOS%20Delegate%20%E5%BC%95%E5%8F%91%E7%9A%84%E8%A1%80%E6%A1%88/</url>
       <content type="html"><![CDATA[<p>今天在项目重构过程中遇到一个很神奇的 bug，和同组的小伙伴一起研究了好久终于排查出问题所在，当然大家应该已经猜到了这个问题是因为 Delegate 的使用所导致的。接下来我先简单的将这个问题描述一下</p>
