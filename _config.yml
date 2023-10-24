@@ -83,5 +83,5 @@ theme: maupassant ##maupassant
 ## Docs: https://hexo.io/docs/deployment.html
 deploy:
   type: git
-  repo: https://github.com/xiaopengmonsters/xiaopengmonsters.github.io.git
+  repo: https://github.com/xia0peng/xia0peng.github.io.git
   branch: master
