@@ -11,3 +11,8 @@ hexo gengrate  生成静态页面
 hexo server 本地服务
 
 hexo deploy 部署
+
+------
+
+npm uninstall --save node-sass
+npm install --save node-sass
