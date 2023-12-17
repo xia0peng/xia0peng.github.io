@@ -57,6 +57,13 @@ http://dbiptv.sn.chinamobile.com/PLTV/88888888/224/3221226582/1.m3u8
 #EXTINF:-1 tvg-id="纯享4K" tvg-name="纯享4K" tvg-logo="https://live.fanmingming.com/tv/纯享4K.png" group-title="超清",纯享超清
 http://[2409:8087:2001:20:2800:0:df6e:eb26]:80/ott.mobaibox.com/PLTV/3/224/3221228472/index.m3u8
 
+#EXTINF:-1 tvg-id="纯享4K" tvg-name="Love Nature 4K" tvg-logo="https://live.fanmingming.com/tv/纯享4K.png" group-title="超清",Love Nature 4K
+https://d18dyiwu97wm6q.cloudfront.net/playlist2160p.m3u8
+#EXTINF:-1 tvg-id="纯享4K" tvg-name="UHD 1 4K" tvg-logo="https://live.fanmingming.com/tv/纯享4K.png" group-title="超清",UHD 1 4K
+http://223.110.236.8/ott.js.chinamobile.com/PLTV/3/224/3221228242/index.m3u8
+#EXTINF:-1 tvg-id="纯享4K" tvg-name="UHD 2 4K" tvg-logo="https://live.fanmingming.com/tv/纯享4K.png" group-title="超清",UHD 2 4K
+http://ott.mobaibox.com/PLTV/3/224/3221228472/index.m3u8
+
 #EXTINF:-1 tvg-id="Bestv赛事1" tvg-name="Bestv赛事1" tvg-logo="https://live.fanmingming.com/tv/bestv.png" group-title="赛事直播",Bestv赛事1
 http://iptvrr.sh.chinamobile.com:6060/cms001/ch00000090990000001151/index.m3u8
 #EXTINF:-1 tvg-id="Bestv赛事2" tvg-name="Bestv赛事2" tvg-logo="https://live.fanmingming.com/tv/bestv.png" group-title="赛事直播",Bestv赛事2
