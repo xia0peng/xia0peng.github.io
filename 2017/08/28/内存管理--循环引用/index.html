@@ -1,0 +1,80 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description"><title>内存管理(六)--循环引用 | 怪兽</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/7.0.0/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/1.0.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/1.0.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.7.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/3.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><!-- 加载gitment的css和js文件 -->
+<link rel="stylesheet" href="/css/default.css">
+<script src="/js/gitment.browser.js"></script><script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">内存管理(六)--循环引用</h1><a id="logo" href="/.">怪兽</a><p class="description">技术沉淀，追求创新。</p></div><div id="nav-menu"><a class="current" href="/."><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about"><i class="fa fa-user"> 关于</i></a></div></div><div class="pure-g" id="layout"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">内存管理(六)--循环引用</h1><div class="post-meta">Aug 28, 2017<span> | </span><span class="category"><a href="/categories/内存管理/">内存管理</a></span><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> 阅读</span></span></div><div class="post-content"><hr>
+<p><a href="https://xiaopengmonsters.github.io/2018/06/13/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E6%96%B9%E6%A1%88/" target="_blank" rel="noopener">内存管理(一) – 内存管理方案</a><br><a href="https://xiaopengmonsters.github.io/2018/06/18/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E6%9C%89%E5%85%B3%E6%95%A3%E5%88%97%E8%A1%A8%E5%AE%9E%E7%8E%B0%E7%9A%84%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E6%96%B9%E6%B3%95%E7%9A%84%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" target="_blank" rel="noopener">内存管理(二) – 有关散列表实现的内存管理方法的数据结构</a><br><a href="https://xiaopengmonsters.github.io/2018/06/21/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BC%95%E7%94%A8%E8%AE%A1%E6%95%B0%E7%AE%A1%E7%90%86/" target="_blank" rel="noopener">内存管理(三) – 引用计数管理</a><br><a href="https://xiaopengmonsters.github.io/2018/06/28/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BC%B1%E5%BC%95%E7%94%A8%E7%AE%A1%E7%90%86/" target="_blank" rel="noopener">内存管理(四) – 弱引用管理</a><br><a href="https://xiaopengmonsters.github.io/2018/07/08/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E8%87%AA%E5%8A%A8%E9%87%8A%E6%94%BE%E6%B1%A0/" target="_blank" rel="noopener">内存管理(五) – 自动释放池</a><br><a href="https://xiaopengmonsters.github.io/2018/06/03/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86--%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">内存管理(六) – 循环引用</a><br><a href="https://xiaopengmonsters.github.io/2018/06/05/Block--Block%20%E7%9A%84%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" target="_blank" rel="noopener">Block(四) – Block 的循环引用</a></p>
+<hr>
+<h2 id="循环引用介绍"><a href="#循环引用介绍" class="headerlink" title="循环引用介绍"></a>循环引用介绍</h2><p>循环引用主要可以分为三种类型</p>
+<ul>
+<li>自循环引用</li>
+<li>相互循环引用</li>
+<li>多循环引用</li>
+</ul>
+<p><strong>自循环引用</strong></p>
+<p> <img src="/img/自循环引用.png" alt=""></p>
+<p> 假如有一个对象，对象当中有一个成员变量 obj，这个对象是强持有他的成员变量，如果此时给这个成员变量 obj 赋值原对象的话，就造成自循环引用</p>
+<p> 相互循坏引用</p>
+<p> <img src="/img/相互循坏引用.png" alt=""></p>
+<p> 比如说有一个对象 A ，其中有一个 id 类型的 obj，还有一个对象 B 它当中也有一个 id 类型的 obj，如果此时对象 A 中的 obj 指向对象 B，同时对象 B 中的 obj 指向对象 A，此时就造成相互循坏引用</p>
+<p> 多循环引用</p>
+<p>  <img src="/img/多循环引用.png" alt=""></p>
+<p>  假如在某一个类当中，有对象 1，对象 2，对象 n，每一个对象当中都一个 id 类型的 obj，假如说此时每一个对象的 obj 都指向下一个对象，就产生了一个多循环引用</p>
+<p> <strong>循环引用考点</strong></p>
+<ul>
+<li>代理（相互循环引用）</li>
+<li>Block</li>
+<li>NSTimer</li>
+<li>大环引用</li>
+</ul>
+<h2 id="如何破除循环引用"><a href="#如何破除循环引用" class="headerlink" title="如何破除循环引用"></a>如何破除循环引用</h2><ul>
+<li>避免产生循环引用（比如使用代理过程中，两个对象一个使用强引用，一个使用弱引用）</li>
+<li>在合适的时机手动断环</li>
+</ul>
+<p><strong>破除循环引用具体的解决方案</strong></p>
+<ul>
+<li>_ _weak （在使用代理、Block的时候会用到）</li>
+<li>_ _block（一般使用在 Block 方面产生的循环引用问题）</li>
+<li><em> </em> unsafe<em>unretained（由这个关键字修饰的对象也没有增加引用计数，和 </em> _weak 在效果上是等效的）</li>
+</ul>
+<p><strong>_ _weak 破解</strong></p>
+<p>避免产生循环应用的常用方案</p>
+<p><img src="/img/避免产生循环应用的常用方案.png" alt=""></p>
+<p>假如说左侧的对象 A 和 右侧的对象 B 都有一个成员变量 id 类型的 obj，当把 对象 A 中的成员变量声明为 _ _weak 的时候，就可以破除相互循环引用<br>对象 B 强持有 A ，而 A 弱引用 B，此时规避了循环引用</p>
+<p><strong>_ _block 破解</strong></p>
+<p><img src="/img/__block破解.png" alt=""></p>
+<p><strong><em> </em> unsafe_unretained 破解</strong></p>
+<p><img src="/img/__unsafe_unretained破解.png" alt=""></p>
+<p>如果被修饰对象在某一时机被释放，再通过这个指针去访问原对象的话，会由于悬垂指针的原因导致内存泄露</p>
+<h2 id="循环应用的示例"><a href="#循环应用的示例" class="headerlink" title="循环应用的示例"></a>循环应用的示例</h2><ul>
+<li><p>Block 的使用示例</p>
+</li>
+<li><p>NSTimeer 的使用示例</p>
+</li>
+</ul>
+<h3 id="Block-的循环应用问题"><a href="#Block-的循环应用问题" class="headerlink" title="Block 的循环应用问题"></a>Block 的循环应用问题</h3><p>想了解 Block 的循环引用问题，请移驾 Block 章节的 <a href="">Block–Block 的循环应用</a></p>
+<h3 id="NSTimeer-的循环应用问题"><a href="#NSTimeer-的循环应用问题" class="headerlink" title="NSTimeer 的循环应用问题"></a>NSTimeer 的循环应用问题</h3><p><img src="/img/NSTimeer的循环应用问题1.png" alt=""></p>
+<p>假如一个实际的场景：比如有一个页面，在这个页面当中有一个 banner 广告栏，需要在每一秒钟滚动一次，一般情况下会把 banner 广告栏的 UI 对象作为 VC 的一个成员变量，由 VC 对它进行强持有，那么由于 banner 需要每个一秒钟进行一个滚动播放，又涉及到定会器的使用，所以需要在这个对象当中去添加一个成员变量 NSTimer，当添加了 NSTimer 之后，在为它分配了一个相应的定时回调事件之后，NSTimer 会对他的 target 进行强引用，这个时候就产生了一个相互循环引用</p>
+<p><img src="/img/NSTimeer的循环应用问题2.png" alt=""></p>
+<p>如果把这个对象对 NSTimer 的强引用换为弱引用（如上图）来解除，是大错特错的</p>
+<p><img src="/img/NSTimeer的循环应用问题3.png" alt=""></p>
+<p>因为 NSTimer 刚被分派之后，会被当前线程的 RunLoop 强引用，如果说我们这个对象后者说 NSTimer 是在主线程中创建的，那么就由主线程的 RunLoop 持有这个 NSTimer，所以即使这个对象弱引用了 NSTimer，但是由于主线程的 RunLoop 常住内存 通过对 NSTimer 的强引用，再通过 NSTimer 对对象的强引用，仍然对这个对象产生了一个强引用，那么此时，即使 VC 页面退出，对对象的引用去掉的话，这个当前 banner 广告栏由于被 RunLoop 间接的持有，这个对象也不会被释放，此时就产生了内存泄露</p>
+<p>关于 NSTimer 是有<strong>重复定时器</strong>和<strong>非重复定时器</strong>之分<br>假如我们创建的 NSTimer 是非重复的定时器，一般情况下我们会在定时器的回调方法当中去调用 NSTimer 的 invalidate 方法，同时使 timer 为 nil，通过这种办法，可以把 RunLoop 对 NSTimer 的强引用给解除，同时 NSTimer 也解除了对对象的强引用</p>
+<p><strong>思考：</strong>接入说 NSTimer 是一个重复多次回调的定时器的话，就不能在定时器的回调方法当中调用 invalidate 和做 timer 置 nil 的操作</p>
+<p><img src="/img/NSTimeer的循环应用问题4.png" alt=""></p>
+<p><img src="/img/NSTimeer的循环应用问题5.png" alt=""></p>
+<p>在左侧是 RunLoop 对 NSTimer 的强引用，在右侧是 VC 对 对象的强引用，我们可以在 NSTimer 和对象中间添加一个中间对象，然后由 NSTimer 对中间对象执行一个强引用，同时中间对象分别对 NSTimer 和 banner广告栏的对象做一个弱引用，此时对于一个重复的定时器而言，当当前 VC 或者说页面退出之后，VC 就释放了对 banner 广告栏这个对象强引用，当下次 NSTimer 的回调事件回来的时候，我们可以在中间对象当中 NSTimer 的回调方法里面去判断当前中间对象所持有的弱引用对象是否被废弃掉了，实际上就是判断中间对象所持有的 weak 变量是否为 nil，如果为 nil 的话，在定时器的回调方法当中调用 invalidate 和做 timer 置 nil 的操作，这样的话就可以释放 RunLoop 对 NSTimer 的强引用，NSTimer 对中间对象的强引用，NSTimer和中间对象都可以得到内存的释放达到破除循环引用的目的</p>
+<p><strong>代码实现：</strong></p>
+<p>通过对 NSTimer 添加分类文件，添加一个分派定时器的方法</p>
+<p><img src="/img/NSTimeer的循环应用问题6.png" alt=""></p>
+<p>定义的中间对象：</p>
+<p>在中间对象当中定义了三个成员变量，一个是 用 weak 指向的 target， 另一个是 selector 也就是定时器的回调方法，还持有了一个弱引用实现的成员变量 timer，然后中间对象中还有一个方法 fire，fire方法的实现就是对他所持有的 target 进行判断，如果当前 target 仍然存在的话，那么判断它是否响应这个选择器，如果响应的话就执行对应的回调方法，如果 target 不存在就把 timer 置为无效</p>
+<p><img src="/img/NSTimeer的循环应用问题7.png" alt=""></p>
+<p>分类实现：</p>
+<p>首先创建中间对象，然后把传递给 NSTimer 分类当中方法的 taeget 和 selector 分别指派给中间对象，然后再调用系统的 NSTimer 方法去创建 timer，同时指定回调事件是中间对象的 fire 方法，会在 fire 方法当中对实际的回调方法进行调用</p>
+<p><img src="/img/NSTimeer的循环应用问题8.png" alt=""></p>
+<h3 id="至此，这些知识足够轻松的解决项目中一些常见的由于循环引用引起的内存问题"><a href="#至此，这些知识足够轻松的解决项目中一些常见的由于循环引用引起的内存问题" class="headerlink" title="至此，这些知识足够轻松的解决项目中一些常见的由于循环引用引起的内存问题"></a>至此，这些知识足够轻松的解决项目中一些常见的由于循环引用引起的内存问题</h3></div><iframe src="/donate/?AliPayQR=/img/AliPayQR.png&amp;WeChatQR=/img/WeChatQR.png&amp;GitHub=null&amp;BTCQR=null&amp;BTCKEY=null&amp;PayPal=null" style="overflow-x:hidden; overflow-y:hidden; border:0xp none #fff; min-height:240px; width:100%;" frameborder="0" scrolling="no"></iframe><div class="tags"><a href="/tag/Objective-C/">Objective-C</a></div><div class="post-nav"><a class="pre" href="/2017/08/29/Block--Block 的内存管理/">Block(三)--Block 的内存管理</a><a class="next" href="/2017/08/16/Runtime--类对象与元类对象/">Runtime--类对象与元类对象(二)</a></div></div></div></div><div class="pure-u-1-4 hidden_mid_and_down"><div id="sidebar"><div class="widget"><div class="search-form"><input id="local-search-input" placeholder="Search" type="text" name="q" results="0"/><div id="local-search-result"></div></div></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div><ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/Block/">Block</a><span class="category-list-count">4</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/RunLoop/">RunLoop</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Runtime/">Runtime</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/UI视图/">UI视图</a><span class="category-list-count">3</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/iOS/">iOS</a><span class="category-list-count">8</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/iOS/三方框架/">三方框架</a><span class="category-list-count">4</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/内存管理/">内存管理</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/性能优化/">性能优化</a><span class="category-list-count">4</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/问题记录/">问题记录</a><span class="category-list-count">3</span></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tag/Objective-C/" style="font-size: 15px;">Objective-C</a> <a href="/tag/Runtime/" style="font-size: 15px;">Runtime</a> <a href="/tag/Swift/" style="font-size: 15px;">Swift</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最近文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2020/08/10/RN分包和热更新-iOS部分/">RN分包、增量更新 - iOS部分</a></li><li class="post-list-item"><a class="post-list-link" href="/2018/03/18/iOS Delegate 引发的血案/">iOS Delegate 引发的血案</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/12/20/RunLoop 与多线程相关问题/">RunLoop(四)--RunLoop 与多线程相关问题</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/12/20/RunLoop 与 NSTimer 相关问题/">RunLoop(三)--RunLoop 与 NSTimer 相关问题</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/12/05/RunLoop 数据结构/">RunLoop(二)--RunLoop 数据结构</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/12/01/RunLoop 本质和事件循环机制/">RunLoop(一)--RunLoop 本质和事件循环机制</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/11/18/内存管理--自动释放池/">内存管理(五)--自动释放池</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/11/07/内存管理--弱引用管理/">内存管理(四)--弱引用管理</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/10/21/内存管理--引用计数管理/">内存管理(三)--引用计数管理</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/10/14/内存管理--有关散列表实现的内存管理方法的数据结构/">内存管理(二)--有关散列表实现的内存管理方法的数据结构</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://www.baidu.com/" title="百度" target="_blank">百度</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">Copyright © 2023 <a href="/." rel="nofollow">怪兽.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho. <span>您是访问本站的第<span id="busuanzi_value_site_uv"></span>位小伙伴</span> <script type="text/javascript">var cnzz_protocol = (("https:" == document.location.protocol) ? " https://" : " http://");document.write(unescape("%3Cspan id='cnzz_stat_icon_1271673961'%3E%3C/span%3E%3Cscript src='" + cnzz_protocol + "s13.cnzz.com/z_stat.php%3Fid%3D1271673961%26show%3Dpic1' type='text/javascript'%3E%3C/script%3E"));</script></a></div></div></div><a class="show" id="rocket" href="#top"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/3.2.5/jquery.fancybox.min.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/fancybox/3.2.5/jquery.fancybox.min.css"><script type="text/javascript" src="/js/search.js?v=0.0.0"></script><script>var search_path = 'search.xml';
+if (search_path.length == 0) {
+   search_path = 'search.xml';
+}
+var path = '/' + search_path;
+searchFunc(path, 'local-search-input', 'local-search-result');
+</script><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
